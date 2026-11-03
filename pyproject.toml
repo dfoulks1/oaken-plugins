@@ -1,0 +1,19 @@
+# The development workspace for the Oaken plugins. Each plugin under a top-level
+# oaken-<kind>-<name>/ directory is its own distribution with its own pyproject.toml; this root
+# only ties them together for development (one `uv sync` builds them all against one environment).
+# It is not itself published.
+[tool.uv.workspace]
+members = ["oaken-*"]
+
+[tool.uv.sources]
+# Develop against the local Oaken checkout next door when it is present; a published install uses
+# the version each plugin pins in its own pyproject.toml.
+oaken-core = { path = "../oaken-mail", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy",
+]
