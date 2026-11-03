@@ -20,7 +20,12 @@ from collections.abc import AsyncIterator
 from typing import ClassVar
 
 from oaken.plugins.base import BaseProvider
-from oaken.plugins.contracts import PLUGIN_API_VERSION, PluginContext, PullBatch, RawMessage
+from oaken.plugins.contracts import (
+    PLUGIN_API_VERSION,
+    PluginContext,
+    PullBatch,
+    RawMessage,
+)
 from pydantic import BaseModel, ConfigDict, Field
 
 # The contract this plugin was written against. If the host's is older, fail loudly at start

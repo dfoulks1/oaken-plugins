@@ -1,0 +1,27 @@
+# oaken-provider-jmap: read mail from any JMAP server (RFC 8620/8621), as an Oaken provider.
+# Vendor-neutral: Fastmail and other JMAP hosts work through this. A host that needs its own
+# quirks gets a thin cousin plugin that builds on this one, not special cases here.
+[project]
+name = "oaken-provider-jmap"
+version = "0.1.0"
+description = "An Oaken provider that reads mail from a JMAP server."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "oaken-core>=0.2.1",             # brings httpx2 and the keyring helper patterns
+]
+
+[project.entry-points."oaken.providers"]
+jmap = "oaken_provider_jmap:JmapProvider"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oaken_provider_jmap"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
