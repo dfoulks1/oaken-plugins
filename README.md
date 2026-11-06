@@ -34,6 +34,7 @@ attributes and writes the method or two that are its own. It declares no entry p
 | plugin | kind | what it does |
 |---|---|---|
 | `ini` | formatter | splits an INI file into one part per section |
+| `jsonl` | provider | the by-hand door: pipe JSON Lines in, each line becomes an item |
 | `llm` | triager | a model decides whether an item meets your criteria |
 
 ## Not yet ported
