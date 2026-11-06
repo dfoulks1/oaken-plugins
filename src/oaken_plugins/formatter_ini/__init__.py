@@ -12,7 +12,12 @@ from oaken_core.plugins.base import BaseFormatter
 
 
 class IniFormatter(BaseFormatter):
+    """Splits an INI file into one part per section, so triagers and analyzers read the section they need. A part's content is that
+    section's keys and values."""
+
     version: ClassVar[str] = "1"
+    setup_help = 'Set `format = "ini"` on the provider that submits the files. Text outside a section is refused, and Intake keeps the item whole.'
+    config_example = '[plugins.provider.socket]\nunix_path = "~/oaken-home/oaken-socket"\nformat = "ini"\nframing = "connection"'
     formats: ClassVar[tuple[str, ...]] = ("ini", "text/x-ini")
 
     async def split(self, raw: Any) -> dict[str, Part]:

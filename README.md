@@ -21,10 +21,10 @@ extensions directory and add it by name.
 ## The shape of a plugin
 
 ```
-src/oaken_plugins/<kind>_<name>/     # formatter_ini, triager_llm: the kind, then the name `plugin add` takes
-    __init__.py                      # a docstring (its first line is what `oaken plugins` shows) and one plugin class
+src/oaken_plugins/<kind>_<name>/     # formatter_ini, provider_jsonl: the kind, then the name `plugin add` takes
+    __init__.py                      # the plugin class, and its own documentation: a docstring (its first line is what
+                                     # `oaken plugins` shows), `setup_help` and `config_example`; the console renders them
 tests/test_<kind>_<name>.py
-docs/<kind>_<name>.md                # setup and settings
 prompts/<kind>_<name>/               # the prompts the plugin was built from, when it has them
 ```
 
@@ -34,10 +34,14 @@ attributes and writes the method or two that are its own. It declares no entry p
 | plugin | kind | what it does |
 |---|---|---|
 | `ini` | formatter | splits an INI file into one part per section |
+| `rfc822` | formatter | splits an email into `headers`, `text`, `html` and one part per attachment |
+| `mail` | ingestor | stores email by Message-ID, threaded, and gives it back (`oaken item show`, `oaken item get`) |
 | `jsonl` | provider | the by-hand door: pipe JSON Lines in, each line becomes an item |
-| `llm` | triager | a model decides whether an item meets your criteria |
+| `gmail` | provider | a template: one instance per Gmail account, synced on a schedule, each message submitted to Intake (ported from oaken-mail) |
 
 ## Not yet ported
+
+The Gmail provider's write side (flag, label, trash, send) is not ported yet. It is part of a provider's shape: a provider extends the contract with its own operations when it loads, and core needs nothing for them. oaken-mail has it.
 
 `oaken-provider-jmap`, `oaken-provider-maildir` and `oaken-provider-mbox` still speak oaken-mail's older plugin API
 (`oaken.plugins`) and sit at the top level of this repository as they were. They join `src/oaken_plugins/` once they are

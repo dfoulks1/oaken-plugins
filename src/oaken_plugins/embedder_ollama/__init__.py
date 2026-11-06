@@ -16,12 +16,14 @@ from oaken_core.plugins.contracts import Health, PluginContext
 
 
 class OllamaEmbedder(BaseEmbedder):
-    """Registered as ``oaken_core.embedders: ollama``. The model is the instance's ``model`` setting.
-    ``start`` confirms the model is installed, reads its context length and embeds one probe text to
+    """An Ollama server as an embedder: the vectors behind the junk index, the answer shortcuts and ``embed``. The model is the
+    instance's ``model`` setting. ``start`` confirms the model is installed, reads its context length and embeds one probe text to
     learn the vector size."""
 
     config_model = OllamaConfig
     requires_config = ("model",)
+    setup_help = "Needs an Ollama server with an embedding model pulled (for example `ollama pull nomic-embed-text`). Set `model`."
+    config_example = '[plugins.embedder.ollama]\nmodel = "nomic-embed-text"\nlocality = "local"'
 
     def __init__(self, *, transport: httpx2.AsyncBaseTransport | None = None) -> None:
         self._transport = transport

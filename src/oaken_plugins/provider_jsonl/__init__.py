@@ -71,7 +71,11 @@ def _parse(text: str, raw: bool) -> tuple[list[tuple[int, Any]], list[Problem], 
 
 
 class JsonlProvider(BaseProvider):
+    """The by-hand door: pipe a file of JSON Lines in and each line becomes an item. Nothing keeps it open; ``socket`` is the machine's door."""
+
     version: ClassVar[str] = "0.1.0"
+    setup_help = "Pipe JSON Lines in: `cat leads.jsonl | oaken jsonl ingest --yes`. Without --yes it says what it would do. Set `format` so a formatter splits each line into parts. No de-duplication, and one call is as big as the API's body limit."
+    config_example = '[plugins.provider.jsonl]\nsource = "voltpop"\nformat = "json"'
     config_model = JsonlConfig
     config: JsonlConfig
 

@@ -2,7 +2,7 @@
 
 ## What a plugin is
 
-A subpackage of `oaken_plugins`, named `<kind>_<name>` (`formatter_ini`, `triager_llm`), that subclasses one of Oaken
+A subpackage of `oaken_plugins`, named `<kind>_<name>` (`formatter_ini`, `provider_jsonl`), that subclasses one of Oaken
 Core's base classes (`oaken_core.plugins.base`). The kinds are provider, formatter, embedder, llm_backend, triager,
 enricher, action, vector_store and cache_store. Write the methods that are your plugin's own work and no more; the base
 class supplies everything else.
@@ -21,7 +21,11 @@ surfaces plainly rather than misbehaving.
 
 1. `src/oaken_plugins/<kind>_<name>/__init__.py`: a docstring (its first line is the summary `oaken plugins` shows) and
    the plugin class. Exactly one class of that kind, because `plugin add` picks it.
-2. `tests/test_<kind>_<name>.py`, `docs/<kind>_<name>.md` for setup and settings, and `prompts/<kind>_<name>/00-context.md`
+   **The plugin documents itself.** There are no docs pages in this repository: the class carries its documentation and the
+   console renders it on the plugin's page. Write what it is for in the class docstring, how to set it up in `setup_help`, a
+   working snippet in `config_example`, and describe every setting with `Field(description=...)` on its `config_model`.
+   A `BaseTemplatePlugin` also says what an instance must be given in `contextual`.
+2. `tests/test_<kind>_<name>.py`, and `prompts/<kind>_<name>/00-context.md`
    when you built it with a model (numbered, `00-context.md` first, so the record of how it was built lives with it).
 3. Keep the Oaken surface thin: import the base and the contract types you return, nothing deeper.
 4. A new non-trivial branch, parser or protocol leaves a test.

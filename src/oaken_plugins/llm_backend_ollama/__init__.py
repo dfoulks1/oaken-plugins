@@ -16,12 +16,14 @@ from oaken_core.plugins.contracts import Health, LLMRequest, LLMResponse, Plugin
 
 
 class OllamaLLM(BaseLLMBackend):
-    """Registered as ``oaken_core.llm_backends: ollama`` and again as ``ollama-remote``. The model is the
-    instance's ``model`` setting. Who may send it what is the router's call, from the instance's
-    ``locality`` (unset means hosted, the strictest)."""
+    """A local Ollama server as a model backend: plugins that ask a model (the ``llm`` triager and the like) are answered by it, and
+    it lists the models it has, so a settings dialog can offer them in a dropdown. The model is the instance's ``model`` setting.
+    Who may send it what is the router's call, from the instance's ``locality`` (unset means hosted, the strictest)."""
 
     config_model = OllamaConfig
     requires_config = ("model",)
+    setup_help = "Needs an Ollama server (ollama.com) with a model pulled. Set `model`; `base_url` is http://127.0.0.1:11434 unless you say otherwise. Mark it `locality = \"local\"` so confidential items may use it."
+    config_example = '[plugins.llm_backend.ollama]\nmodel = "llama3.2:3b"\nlocality = "local"'
 
     def __init__(self, *, transport: httpx2.AsyncBaseTransport | None = None) -> None:
         self._transport = transport
