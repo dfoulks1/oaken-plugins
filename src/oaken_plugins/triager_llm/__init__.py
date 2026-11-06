@@ -25,7 +25,7 @@ import hashlib
 from typing import Any, ClassVar, Literal
 
 from oaken_core.intake import IntakeItem, Verdict, item_text
-from oaken_core.plugins.base import BaseLLMAnalyzer, BaseTriager, command
+from oaken_core.plugins.base import BaseLLMAnalyzer, BaseTemplatePlugin, BaseTriager, command
 from oaken_core.plugins.contracts import LLMRequest, PluginOpContext
 from oaken_core.untrusted import UntrustedText
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -72,8 +72,9 @@ class TryOut(BaseModel):
     confidence: float
 
 
-class LlmTriager(BaseLLMAnalyzer, BaseTriager):
+class LlmTriager(BaseTemplatePlugin, BaseLLMAnalyzer, BaseTriager):
     version: ClassVar[str] = "1"
+    contextual: ClassVar[tuple[str, ...]] = ("criteria",)  # an agent is made with its instructions; bare `llm` is a template
     rank: ClassVar[int] = 90
     prompt: ClassVar[str] = PROMPT
     guard: ClassVar[str] = GUARD
