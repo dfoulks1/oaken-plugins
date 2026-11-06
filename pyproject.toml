@@ -1,14 +1,26 @@
-# The development workspace for the Oaken plugins. Each plugin under a top-level
-# oaken-<kind>-<name>/ directory is its own distribution with its own pyproject.toml; this root
-# only ties them together for development (one `uv sync` builds them all against one environment).
-# It is not itself published.
-[tool.uv.workspace]
-members = ["oaken-*"]
+# oaken-plugins: the plugins for Oaken Core, in one distribution. Each is a subpackage named <kind>_<name> and declares
+# no entry point: `oaken plugin add NAME` finds it in `oaken_plugins`, and nothing loads until someone adds it.
+[project]
+name = "oaken-plugins"
+version = "0.1.0"
+description = "Plugins for Oaken Core: formatters, triagers and more, one subpackage each."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "oaken-core",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oaken_plugins"]
 
 [tool.uv.sources]
-# Develop against the local Oaken checkout next door when it is present; a published install uses
-# the version each plugin pins in its own pyproject.toml.
-oaken-core = { path = "../oaken-mail", editable = true }
+# Develop against the local Oaken Core checkout next door; a published install uses the version pinned above.
+oaken-core = { path = "../oaken-core", editable = true }
 
 [dependency-groups]
 dev = [
@@ -17,3 +29,9 @@ dev = [
     "ruff",
     "mypy",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["src"]
+testpaths = ["tests"]
