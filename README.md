@@ -37,6 +37,11 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `rfc822` | formatter | splits an email into `headers`, `text`, `html` and one part per attachment |
 | `mail` | ingestor | stores email by Message-ID, threaded, and gives it back (`oaken item show`, `oaken item get`) |
 | `jsonl` | provider | the by-hand door: pipe JSON Lines in, each line becomes an item |
+| `cve` | triager | rates NVD CVE rows: labels severity and product, drops CVEs below a score |
+| `kev` | triager | rates CISA KEV rows: labels them exploited, drops vendors you do not run |
+| `eol` | triager | rates endoflife.date rows: labels how near the date is, drops products you do not run |
+| `hackernews` | triager | rates Hacker News rows: labels project and kind, drops "Who wants to be hired" comments |
+| `exec` | provider | a template: one instance per program, run on a schedule; each row it prints (a JSON array or JSON Lines) becomes an item |
 | `gmail` | provider | a template: one instance per Gmail account, synced on a schedule, each message submitted to Intake (ported from oaken-mail) |
 
 ## Not yet ported
