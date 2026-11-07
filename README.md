@@ -34,8 +34,8 @@ attributes and writes the method or two that are its own. It declares no entry p
 | plugin | kind | what it does |
 |---|---|---|
 | `ini` | formatter | splits an INI file into one part per section |
-| `rfc822` | formatter | splits an email into `headers`, `text`, `html` and one part per attachment |
-| `mail` | ingestor | stores email by Message-ID, threaded, and gives it back (`oaken item show`, `oaken item get`) |
+| `rfc822` | formatter | splits an email into `headers`, `text`, `html` and one part per attachment, and (`safemode = true`, the default) a `clean` part: the text a model should read, with quoted replies, signatures and footers cut and HTML turned to text |
+| `mail` | ingestor | stores email by Message-ID, threaded (with its `clean` part), and gives it back (`oaken item show`, `oaken item get`) |
 | `jsonl` | provider | the by-hand door: pipe JSON Lines in, each line becomes an item |
 | `cve` | triager | rates NVD CVE rows: labels severity and product, drops CVEs below a score |
 | `kev` | triager | rates CISA KEV rows: labels them exploited, drops vendors you do not run |
@@ -57,7 +57,7 @@ versions it needs (`requires_core`, currently `>=1.0.0,<2`) and `tags` for what 
 reads these without importing anything: `oaken plugins --kind provider --tag mail`. Each plugin's first docstring line is its listing
 description, one fragment of 30 to 64 characters; tests keep all of that true.
 
-IMAP and SMTP need their libraries, which come as extras: `pip install "oaken-plugins[imap,smtp]"`.
+IMAP, SMTP and the formatter's safe mode need libraries, which come as extras: `pip install "oaken-plugins[imap,smtp,clean]"`. Without `clean`, safe mode still works but cleans only the plain-text part.
 
 ## Not yet ported
 

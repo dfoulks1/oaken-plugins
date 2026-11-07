@@ -5,7 +5,7 @@ The ingestor decides what an item *is*: a message with an identity. The same Mes
 stored once. A message that replies to another joins its thread. An item that is not mail (it has no ``headers`` part) is refused,
 so it waits in Intake's failed jobs, to be requeued once whatever sent it says `format = "rfc822"`.
 
-It reads parts made by the ``rfc822`` formatter (``headers``, ``text``, ``html``, ``attachment-N``) and can give them back
+It reads parts made by the ``rfc822`` formatter (``headers``, ``text``, ``html``, ``clean``, ``attachment-N``) and can give them back
 (``oaken item show``). It replaces the built-in ``items`` ingestor, which only runs while no other is installed.
 """
 
@@ -63,7 +63,7 @@ class MailIngestor(BaseIngestor):
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
-    version: ClassVar[str] = "0.1.0"
+    version: ClassVar[str] = "0.2.0"  # 0.2.0: keeps the `clean` part
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     setup_help = ('Replaces the built-in items ingestor. Items must come in as mail: set `format = "rfc822"` where they are submitted. '
                   "A message already stored (same Message-ID) is not stored again; anything that is not mail is held in Intake's failed jobs.")
@@ -84,6 +84,7 @@ class MailIngestor(BaseIngestor):
             raise PluginError("not a mail item: its headers carry neither From nor Message-ID")
         text = str(item.parts["text"].content) if "text" in item.parts else ""
         html = str(item.parts["html"].content) if "html" in item.parts else ""
+        clean = str(item.parts["clean"].content) if "clean" in item.parts else ""  # the formatter's safe-mode part, kept for analyzers after the store
         message_id = (_ids(_first(headers, "message-id")) or [""])[0] or "sha256:" + hashlib.sha256(json.dumps([headers, text], sort_keys=True).encode()).hexdigest()
         seen = await db.fetchone("SELECT subject_id FROM mail_messages WHERE message_id = ?", (message_id,))
         if seen is not None:  # the same message again: it is already here
@@ -98,10 +99,10 @@ class MailIngestor(BaseIngestor):
         subject = new_subject_id()
         async with db.transaction() as tx:
             await tx.execute(
-                "INSERT INTO mail_messages (subject_id, message_id, thread_id, source, subject, from_addr, to_addrs, sent_at, headers_json, body_text, body_html, created_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO mail_messages (subject_id, message_id, thread_id, source, subject, from_addr, to_addrs, sent_at, headers_json, body_text, body_html, body_clean, created_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (subject, message_id, thread, item.source, _first(headers, "subject"), parseaddr(_first(headers, "from"))[1].lower(),
-                 json.dumps(to), sent, json.dumps(headers), text, html, fmt_ts(self.ctx.clock.now())),
+                 json.dumps(to), sent, json.dumps(headers), text, html, clean, fmt_ts(self.ctx.clock.now())),
             )  # fmt: skip
             for name, part in item.parts.items():
                 if name.startswith("attachment-"):
@@ -113,7 +114,7 @@ class MailIngestor(BaseIngestor):
     async def read(self, subject_id: str, part: str | None = None) -> dict[str, Any]:
         db = self.ctx.db
         assert db is not None
-        row = await db.fetchone("SELECT headers_json, body_text, body_html FROM mail_messages WHERE subject_id = ?", (subject_id,))
+        row = await db.fetchone("SELECT headers_json, body_text, body_html, body_clean FROM mail_messages WHERE subject_id = ?", (subject_id,))
         if row is None:
             raise NotFound(f"no message {subject_id!r} in the mail ingestor")
         parts: dict[str, Any] = {"headers": json.loads(row["headers_json"])}
@@ -121,6 +122,8 @@ class MailIngestor(BaseIngestor):
             parts["text"] = row["body_text"]
         if row["body_html"]:
             parts["html"] = row["body_html"]
+        if row["body_clean"]:
+            parts["clean"] = row["body_clean"]
         for a in await db.fetchall("SELECT n, filename, content_type, size FROM mail_attachments WHERE subject_id = ? ORDER BY n", (subject_id,)):
             parts[f"attachment-{a['n']}"] = {"filename": a["filename"], "content_type": a["content_type"], "size": a["size"]}
         if part is not None:

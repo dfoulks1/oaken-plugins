@@ -61,7 +61,7 @@ async def messages(core: Core, **inp: Any) -> Any:
 
 async def test_the_formatter_makes_headers_text_html_and_attachment_metadata() -> None:
     parts = await Rfc822Formatter().split(FIRST)
-    assert sorted(parts) == ["attachment-1", "headers", "html", "text"]
+    assert sorted(parts) == ["attachment-1", "clean", "headers", "html", "text"]  # safe mode, on by default, adds `clean`
     assert parts["headers"].content["message-id"] == ["<m1@acme.test>"] and parts["text"].content.strip() == "We are hiring."
     assert "\r" not in parts["text"].content and "\r" not in parts["html"].content  # line endings are newlines, not mail's CRLF
     import base64
@@ -78,7 +78,7 @@ async def test_a_message_goes_through_intake_is_stored_by_the_mail_ingestor_and_
     (m,) = out.messages
     assert (out.total, m.from_addr, m.subject, m.attachments) == (1, "ann@acme.test", "Hiring a staff engineer", 1) and m.sent_at == "2026-11-03T10:00:00+00:00"
     shown = (await core.client.call("item_show", {"id": m.subject_id}, CLI)).output
-    assert sorted(shown.parts) == ["attachment-1", "headers", "html", "text"] and shown.parts["text"].strip() == "We are hiring."  # type: ignore[union-attr]
+    assert sorted(shown.parts) == ["attachment-1", "clean", "headers", "html", "text"] and shown.parts["text"].strip() == "We are hiring."  # the stored message keeps `clean` too  # type: ignore[union-attr]
     assert shown.parts["attachment-1"]["filename"] == "jd.pdf" and shown.labels["format"] == "ok"  # type: ignore[union-attr]
     one = (await core.client.call("item_show", {"id": m.subject_id, "part": "headers"}, CLI)).output
     assert list(one.parts) == ["headers"] and one.parts["headers"]["subject"] == ["Hiring a staff engineer"]  # type: ignore[union-attr]
@@ -112,3 +112,26 @@ async def test_text_sent_as_mail_that_has_no_headers_is_refused_too(core: Core) 
     assert (await messages(core)).total == 0
     (job,) = await core.runner.jobs.query(kind="intake.store")
     assert "neither From nor Message-ID" in (job.last_error or "")
+
+
+REPLY_ALL = (b"From: Bob <bob@acme.test>\r\nTo: drew@x.test\r\nSubject: Re: lunch\r\nMessage-ID: <m9@acme.test>\r\nDate: Tue, 03 Nov 2026 12:00:00 +0000\r\n\r\n"
+             b"Noon works.\r\n\r\nOn Tue, Nov 3, 2026 at 10:00 AM Drew <drew@x.test> wrote:\r\n> want lunch?\r\n\r\n-- \r\nBob | VP\r\nSent from my phone\r\n")  # fmt: skip
+
+
+async def test_safe_mode_adds_a_clean_part_that_leaves_the_original_alone_and_the_store_keeps_it(core: Core) -> None:
+    parts = await Rfc822Formatter().split(REPLY_ALL)
+    assert parts["clean"].content == "Noon works."  # the quoted reply, the signature and the phone footer are gone
+    assert "want lunch?" in parts["text"].content and "Sent from my phone" in parts["text"].content  # the text part is exactly as sent
+    await send(core, REPLY_ALL, format="rfc822")
+    (m,) = (await messages(core)).messages
+    stored = (await core.client.call("item_show", {"id": m.subject_id, "part": "clean"}, CLI)).output
+    assert stored.parts["clean"] == "Noon works."  # type: ignore[union-attr]
+
+
+async def test_safe_mode_can_be_turned_off_and_then_the_formatter_gives_the_message_as_sent() -> None:
+    from oaken_plugins.formatter_rfc822 import Rfc822Config
+
+    formatter = Rfc822Formatter()
+    formatter.config = Rfc822Config(safemode=False)
+    assert sorted(await formatter.split(REPLY_ALL)) == ["headers", "text"]  # no clean part
+    assert Rfc822Config().safemode is True  # on unless someone says otherwise

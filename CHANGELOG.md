@@ -9,4 +9,5 @@ The first release of oaken-plugins, for oaken-core 1.0 (`requires_core = ">=1.0.
 - **Models:** `llm_backend.ollama` (needs no model: it only has to answer and list what it has), `llm_backend.ollama-remote`, `embedder.ollama`.
 - **Signals:** the `cve`, `kev`, `eol` and `hackernews` triagers. **Generic:** `exec`, `jsonl`, `ini`, `localname`.
 - Every plugin declares its version, the plugin API and core versions it needs, and tags; descriptions are one short line. Tests enforce it.
-- `imapclient` and `aiosmtplib` come as extras: `oaken-plugins[imap]`, `oaken-plugins[smtp]`.
+- `imapclient`, `aiosmtplib` and `selectolax` come as extras: `oaken-plugins[imap]`, `[smtp]`, `[clean]`.
+- **Safe mode** (`safemode = true`, on by default) in the `rfc822` formatter (now 0.2.0): a `clean` part with the message as text a model should read. HTML becomes text (scripts, styles, remote images and tracking pixels dropped), and quoted replies, signatures, footers and disclaimers are cut. `text` and `html` are untouched. The cleaner is oaken-mail's own rule set, ported with its tests. The `mail` ingestor (now 0.2.0) keeps the part.

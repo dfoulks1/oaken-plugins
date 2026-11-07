@@ -28,6 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 imap = ["imapclient>=4.1.0"]
 smtp = ["aiosmtplib>=5.1.3"]
+clean = ["selectolax>=1.0.1"]  # the rfc822 formatter's safe mode turns HTML into text with it; without it, safe mode cleans the plain text part only
 
 [project.urls]
 Repository = "https://github.com/dfoulks1/oaken-plugins"
