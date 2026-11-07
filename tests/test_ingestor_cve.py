@@ -67,3 +67,4 @@ async def test_nvd_and_kev_join_on_the_cve_id_in_either_order_and_exploited_is_s
 async def test_an_nvd_row_alone_is_not_exploited(core: Core) -> None:
     await send(core, NVD, "cve")
     assert await exploited(core) == []
+

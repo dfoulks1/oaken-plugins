@@ -23,3 +23,8 @@ async def test_not_an_object_raises_so_intake_keeps_the_item_whole() -> None:
 async def test_kev_row_with_only_a_closing_brace() -> None:
     parts = await CveFormatter().split('"cve": "CVE-2015-3306",\n"vendor": "ProFTPD",\n"due": "2026-10-11"\n }')
     assert {n: p.content for n, p in parts.items()} == {"cve": "CVE-2015-3306", "vendor": "ProFTPD", "due": "2026-10-11"}
+
+
+async def test_a_row_a_provider_already_parsed_is_split_as_it_is() -> None:
+    parts = await CveFormatter().split({"cve": "CVE-2015-3306", "score": 7.5})  # exec and jsonl submit a dict, not text
+    assert {n: p.content for n, p in parts.items()} == {"cve": "CVE-2015-3306", "score": 7.5}
