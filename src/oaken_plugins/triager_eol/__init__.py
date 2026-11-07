@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``eol``: rates endoflife.date rows (``eol_date``, ``product``, ``release``, ``already_eol``).
+"""Rates endoflife.date rows by end-of-life status
 
 Labels each ``signal=eol`` with ``eol=past`` (already ended), ``soon`` (within ``soon_days``) or ``later``. Set ``products`` to keep only
 the ones you run (endoflife.date names, such as ``apache-camel``). Any other row is not its business: it gives no answer.
@@ -32,11 +32,13 @@ class EolConfig(BaseModel):
 
 
 class EolTriager(BaseTriager):
-    """Rates end-of-life rows: labels how near the date is, drops products you do not run."""
+    """Rates endoflife.date rows by end-of-life status
+
+    Rates end-of-life rows: labels how near the date is, drops products you do not run."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it endoflife.date rows (an `exec` instance running end-of-life-dates.py). Set `products` to the ones you run: the feed lists hundreds."

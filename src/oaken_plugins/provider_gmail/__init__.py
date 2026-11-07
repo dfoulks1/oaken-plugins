@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Gmail as a source of mail: one instance per account, synced on a schedule, each message submitted to Intake as raw RFC 822.
+"""Gmail accounts as a source of mail, one instance each
 
 A template: make an instance for each account, give it the Google OAuth client file, then sign in with `oaken <instance> auth`. It only
 provides: Intake formats the messages (the `rfc822` formatter) and the `mail` ingestor stores them. Ported from oaken-mail's Gmail provider.

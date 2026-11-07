@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``exec``: run a program on a schedule and submit what it prints, one item per row.
+"""Runs a program on a schedule; each output row is an item
 
 A template: make an instance for each program (the + on a stage's page). Each has its own ``command``, ``cron`` and
 schedule job. The program prints a JSON array of objects, or JSON Lines, on stdout; every element becomes one item for
@@ -54,11 +54,13 @@ def _at(row: Any, path: str) -> Any:
 
 
 class ExecProvider(BaseTemplatePlugin, BaseProvider):
-    """A program, run on a schedule, as a source of items: each row it prints is submitted to intake."""
+    """Runs a program on a schedule; each output row is an item
+
+    A program, run on a schedule, as a source of items: each row it prints is submitted to intake."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     contextual: ClassVar[tuple[str, ...]] = ("command",)
     config_model = ExecConfig

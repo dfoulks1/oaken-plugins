@@ -155,7 +155,7 @@ async def test_trash_and_junk_never_sync_whatever_the_server_calls_them(core: Co
 async def test_no_stored_password_makes_it_unhealthy_and_says_how_to_store_one(core: Core) -> None:
     WORLD["stored"] = False
     health = await core.host.get("provider", "work").health()
-    assert not health.ok and "secret set provider work password" in health.detail
+    assert not health.ok and "secret set --kind provider --name work --key password" in health.detail
     checked = (await core.client.call("work.check", {}, CLI)).output
     assert not checked.ok and "no password is stored" in checked.detail  # type: ignore[union-attr]
 

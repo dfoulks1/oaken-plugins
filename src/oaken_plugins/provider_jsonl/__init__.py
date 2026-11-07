@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``jsonl``: JSON Lines in, items in intake out. The by-hand door: a person dumps a file in; nothing keeps it open
-(``socket`` is the machine's door).
+"""JSON Lines piped in by hand, one item per line
 
+The by-hand door: a person dumps a file in and nothing keeps it open (``socket`` is the machine's door).
 One command, ``oaken jsonl ingest``: pipe a file or another tool's output into it and every line becomes one
 item for triage, with the parsed JSON object as its body (or the line's text, with ``raw``). It also answers on
 the API as the operation ``jsonl.ingest``. The plugin has no file watcher and no loop: the thing that makes
@@ -71,11 +71,13 @@ def _parse(text: str, raw: bool) -> tuple[list[tuple[int, Any]], list[Problem], 
 
 
 class JsonlProvider(BaseProvider):
-    """The by-hand door: pipe a file of JSON Lines in and each line becomes an item. Nothing keeps it open; ``socket`` is the machine's door."""
+    """JSON Lines piped in by hand, one item per line
+
+    The by-hand door: pipe a file of JSON Lines in and each line becomes an item. Nothing keeps it open; ``socket`` is the machine's door."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     setup_help = "Pipe JSON Lines in: `cat leads.jsonl | oaken jsonl ingest --yes`. Without --yes it says what it would do. Set `format` so a formatter splits each line into parts. No de-duplication, and one call is as big as the API's body limit."
     config_example = '[plugins.provider.jsonl]\nsource = "voltpop"\nformat = "json"'

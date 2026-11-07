@@ -198,10 +198,37 @@ async def test_available_models_lists_what_ollama_has_pulled(ollama: FakeOllama)
     assert "qwen2.5:3b" in await llm.available_models()
 
 
-async def test_the_llm_discovers_its_context_window_and_needs_a_model(ollama: FakeOllama) -> None:
+async def test_a_default_model_tells_the_llm_its_context_window_and_is_never_required(ollama: FakeOllama) -> None:
     llm = await started_llm(ollama)
     assert llm.model_id == "qwen2.5:3b" and llm.context_window > 0
-    assert OllamaLLM.requires_config == ("model",) and OllamaRemoteLLM.requires_config == ("base_url", "model")
+    assert OllamaLLM.requires_config == () and OllamaRemoteLLM.requires_config == ("base_url",)  # only the address is the backend's own
+
+
+async def started_without_a_model(fake: FakeOllama, **config: Any) -> OllamaLLM:
+    llm = OllamaLLM(transport=fake.transport)
+    await llm.start(make_context("llm_backend", config={"backoff": 0, **config}))
+    return llm
+
+
+async def test_the_backend_runs_with_no_model_and_is_healthy_when_ollama_lists_its_models(ollama: FakeOllama) -> None:
+    llm = await started_without_a_model(ollama, max_retries=0)  # no retry, so one dropped connection is seen
+    assert llm.model_id == "ollama" and (await llm.health()).ok  # core wants an id; with no default it names the backend and "qwen2.5:3b" in await llm.available_models()
+    ollama.fail[:] = [httpx2.ConnectError("down")]
+    assert not (await llm.health()).ok  # the call no longer works
+
+
+async def test_a_default_that_is_not_pulled_does_not_stop_the_backend(ollama: FakeOllama) -> None:
+    llm = await started_without_a_model(ollama, model="not-a-model:1b")
+    assert (await llm.health()).ok  # a default is optional and never the backend's failure: the model is the user's to pull
+
+
+async def test_a_call_names_its_model_or_the_default_does_and_with_neither_it_says_what_ollama_has(ollama: FakeOllama) -> None:
+    llm = await started_without_a_model(ollama)
+    request = LLMRequest(system="s", user=["hello"])
+    assert (await llm.generate(request, model="qwen2.5:3b")).model_id == "qwen2.5:3b"  # the analyzer's route named it
+    with pytest.raises(PluginError, match="no model was named for this call") as raised:
+        await llm.generate(request)
+    assert "qwen2.5:3b" in str(raised.value)  # what Ollama has, so the fix is one word away
 
 
 async def test_structured_output_sends_the_schema_as_format(ollama: FakeOllama) -> None:
@@ -249,3 +276,36 @@ async def test_the_models_ollama_has_pulled_are_offered_as_choices_for_model(oll
         found = await plugin.setting_choices({"base_url": "http://127.0.0.1:11434"})  # not started: only its config
         assert list(found) == ["model"] and "qwen2.5:3b" in found["model"] and found["model"] == sorted(found["model"])
     assert ollama.paths().count("/api/tags") == 2 and "/api/pull" not in ollama.paths()  # it only lists; it never pulls
+
+
+async def test_core_starts_the_backend_with_no_model_and_with_one(ollama: FakeOllama, tmp_path: Any) -> None:
+    """Through the real host, which checks every backend's contract (an id, a context window) before it runs: calling start() alone does not."""
+    from oaken_core.clock import FakeClock
+    from oaken_core.daemon.core import Core
+    from oaken_core.plugins.host import PluginTables
+    from oaken_core.settings import Settings
+    from oaken_core.store import SqliteStore
+
+    class Pretend(OllamaLLM):
+        def __init__(self) -> None:
+            super().__init__(transport=ollama.transport)
+
+    class EP:
+        def __init__(self, name: str, obj: Any) -> None:
+            self.name, self._obj, self.dist, self.value = name, obj, None, f"{obj.__module__}:{obj.__qualname__}"
+
+        def load(self) -> Any:
+            return self._obj
+
+    found = {"oaken_core.stores": [EP("sqlite", SqliteStore)], "oaken_core.llm_backends": [EP("ollama", Pretend)]}
+    tables = {"store": {"sqlite": {"path": str(tmp_path / "core.db")}}, "llm_backend": {"ollama": {}, "pinned": {"plugin": "ollama", "model": "qwen2.5:3b"}}}
+    core = Core(Settings(plugins=PluginTables(tables=tables)), clock=FakeClock(), discover=lambda g: found.get(g, []))
+    await core.open()
+    await core.host.start()
+    try:
+        by = {s.name: s for s in core.host.statuses() if s.kind == "llm_backend"}
+        assert by["ollama"].started and by["ollama"].healthy, by["ollama"].detail  # no model, no config at all
+        assert by["pinned"].started and by["pinned"].healthy, by["pinned"].detail  # a default model, if one is given
+        assert core.host.get("llm_backend", "ollama").context_window > 0 and core.host.get("llm_backend", "pinned").model_id == "qwen2.5:3b"
+    finally:
+        await core.host.stop()

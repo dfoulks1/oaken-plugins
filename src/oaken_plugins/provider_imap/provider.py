@@ -72,11 +72,13 @@ class CheckOut(BaseModel):
 
 
 class ImapProvider(BaseTemplatePlugin, BaseProvider):
-    """One IMAP mailbox as a source of mail."""
+    """IMAP mailboxes as a source of mail, one instance each
+
+    One IMAP mailbox as a source of mail."""
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
-    version: ClassVar[str] = "1"
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
+    version: ClassVar[str] = "0.1.0"
     tags: ClassVar[tuple[str, ...]] = ("mail",)
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     config_model = ImapConfig
@@ -85,7 +87,7 @@ class ImapProvider(BaseTemplatePlugin, BaseProvider):
     _live: ClassVar[dict[str, "ImapProvider"]] = {}  # the started instance of each account, by instance name
     setup_help = (
         "IMAP is any mail server. TLS is always on (there is no plaintext option, by design). Make an instance per mailbox (the + on the Providers "
-        "page) with its host and username, then store its password in the OS keyring: `secret set provider NAME password` (asked for without "
+        "page) with its host and username, then store its password in the OS keyring: `secret set --kind provider --name NAME --key password` (asked for without "
         "echo; it is never in config.toml). `NAME check` says whether the sign-in works. It syncs every poll_seconds. Trash and Junk never sync; "
         "set include_folders to read only some. Set confidential = true to keep this account's mail off hosted models."
     )
@@ -114,7 +116,7 @@ class ImapProvider(BaseTemplatePlugin, BaseProvider):
 
     @property
     def _help(self) -> str:
-        return f"Store it with `{identity.prog} secret set provider {self.ctx.name} password`."
+        return f"Store it with `{identity.prog} secret set --kind provider --name {self.ctx.name} --key password`."
 
     async def _stored(self) -> str | None:
         if self.ctx.secrets is None:

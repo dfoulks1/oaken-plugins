@@ -2,13 +2,25 @@
 # no entry point: `oaken plugin add NAME` finds it in `oaken_plugins`, and nothing loads until someone adds it.
 [project]
 name = "oaken-plugins"
-version = "0.1.0"
+version = "1.0.0"
 description = "Plugins for Oaken Core: formatters, triagers and more, one subpackage each."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = ["oaken", "plugins", "mail", "imap", "smtp", "gmail", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Framework :: AsyncIO",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
-    "oaken-core",
+    "oaken-core>=1.0.0,<2",
 ]
 
 # A plugin whose library is heavy or rarely wanted asks for it as an extra: `pip install oaken-plugins[imap]`. The plugin imports the
@@ -16,6 +28,10 @@ dependencies = [
 [project.optional-dependencies]
 imap = ["imapclient>=4.1.0"]
 smtp = ["aiosmtplib>=5.1.3"]
+
+[project.urls]
+Repository = "https://github.com/dfoulks1/oaken-plugins"
+Issues = "https://github.com/dfoulks1/oaken-plugins/issues"
 
 [build-system]
 requires = ["hatchling"]

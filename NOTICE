@@ -1,0 +1,5 @@
+oaken-plugins
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project includes code adapted from oaken-mail (Apache-2.0), commit cf3b187: the Gmail, IMAP and SMTP providers and the Ollama
+backend and embedder. Copied files keep their SPDX headers.

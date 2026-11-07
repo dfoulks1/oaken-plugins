@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``kev``: rates CISA Known Exploited Vulnerabilities rows (``date_added``, ``cve``, ``vendor``, ``product``, ``ransomware``, ``due``).
+"""Rates CISA Known Exploited Vulnerabilities rows
 
 Every row is already exploited, so each is labelled ``signal=kev`` and ``severity=exploited`` (and ``ransomware=known`` when CISA says
 so). Set ``vendors`` to keep only the ones you run. Any other row is not its business: it gives no answer.
@@ -31,11 +31,13 @@ class KevConfig(BaseModel):
 
 
 class KevTriager(BaseTriager):
-    """Rates CISA KEV rows: labels them exploited, drops vendors you do not run."""
+    """Rates CISA Known Exploited Vulnerabilities rows
+
+    Rates CISA KEV rows: labels them exploited, drops vendors you do not run."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it CISA KEV rows (an `exec` instance running exploited-vulns-cisa.py). Set `vendors` to the ones you run."

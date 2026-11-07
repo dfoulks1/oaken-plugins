@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``hackernews``: rates Hacker News rows (``date``, ``project``, ``type``, ``title_or_text``, ``hn_url``).
+"""Rates Hacker News rows by project and type
 
 Labels each ``signal=hn`` with the ``project`` it names and whether it is a story or a comment. Drops the "Who wants to be hired" comments,
 which name an Apache project only because the poster lists it as a skill. Any other row is not its business: it gives no answer.
@@ -36,11 +36,13 @@ class HackerNewsConfig(BaseModel):
 
 
 class HackerNewsTriager(BaseTriager):
-    """Rates Hacker News rows: labels the project and kind, drops job-seeker comments."""
+    """Rates Hacker News rows by project and type
+
+    Rates Hacker News rows: labels the project and kind, drops job-seeker comments."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it Hacker News rows (an `exec` instance running apache-mentions-hackernews.py)."

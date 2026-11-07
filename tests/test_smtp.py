@@ -157,7 +157,7 @@ async def test_a_refused_password_is_remembered_until_a_new_one_is_stored(core: 
     with pytest.raises(ProviderError, match="refused the login"):
         await send(core, to=["ann@a.test"], subject="s", body="b")
     health = await provider.health()
-    assert not health.ok and "refused the password" in health.detail and "secret set provider out password" in health.detail
+    assert not health.ok and "refused the password" in health.detail and "secret set --kind provider --name out --key password" in health.detail
     logins = len(server.logins)
     with pytest.raises(ProviderError, match="still waiting"):
         await send(core, to=["ann@a.test"], subject="s", body="b")

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Stores email: each message under its Message-ID, grouped into threads, with its attachments' metadata.
+"""Stores email by Message-ID, threaded, with attachment info
 
 The ingestor decides what an item *is*: a message with an identity. The same Message-ID arriving twice is the same message and is
 stored once. A message that replies to another joins its thread. An item that is not mail (it has no ``headers`` part) is refused,
@@ -56,12 +56,14 @@ class ListOut(BaseModel):
 
 
 class MailIngestor(BaseIngestor):
-    """Email, stored by Message-ID and threaded."""
+    """Stores email by Message-ID, threaded, with attachment info
+
+    Email, stored by Message-ID and threaded."""
     tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
-    version: ClassVar[str] = "1"
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
+    version: ClassVar[str] = "0.1.0"
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     setup_help = ('Replaces the built-in items ingestor. Items must come in as mail: set `format = "rfc822"` where they are submitted. '
                   "A message already stored (same Message-ID) is not stored again; anything that is not mail is held in Intake's failed jobs.")

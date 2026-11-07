@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Splits an email message (RFC 822 / MIME) into ``headers``, ``text``, ``html`` and one part per attachment.
+"""Splits an email into headers, text, html and attachments
 
 Stdlib ``email`` only. Attachment bytes are never carried (parts travel as JSON): an ``attachment-N`` part holds the filename, type
 and size. The pair of ``ingestor_mail``, which stores what this produces.
@@ -17,8 +17,8 @@ from oaken_core.plugins.base import BaseFormatter
 class Rfc822Formatter(BaseFormatter):
     tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
-    version: ClassVar[str] = "1"
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
+    version: ClassVar[str] = "0.1.0"
     formats: ClassVar[tuple[str, ...]] = ("rfc822", "email/rfc822", "message/rfc822")
     setup_help = ('Set `format = "rfc822"` on whatever submits messages (a provider, or `oaken intake submit --format rfc822`). The body may be the message as text, or '
                   '`{"base64": "..."}` for raw bytes (what a provider sends, so 8-bit mail is not altered). Pair it with the `mail` ingestor, which stores these parts.')

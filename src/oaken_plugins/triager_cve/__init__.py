@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``cve``: rates NVD rows (``published``, ``cve``, ``products``, ``score``, ``description``).
+"""Rates NVD CVE rows by score and product
 
 Labels each ``signal=cve`` with a ``severity`` from its CVSS score and the ``product``. Drops a scored CVE below ``min_score``; a CVE NVD
 has not scored yet always passes (``severity=unscored``). Any other row is not its business: it gives no answer.
@@ -34,11 +34,13 @@ def severity(score: float) -> str:  # CVSS v3 bands
 
 
 class CveTriager(BaseTriager):
-    """Rates NVD CVE rows: labels severity and product, drops the ones below a score."""
+    """Rates NVD CVE rows by score and product
+
+    Rates NVD CVE rows: labels severity and product, drops the ones below a score."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it NVD rows (an `exec` instance running apache-cves-nvd.py). Set `min_score` to drop low-scoring CVEs."

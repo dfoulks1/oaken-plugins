@@ -43,10 +43,25 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `hackernews` | triager | rates Hacker News rows: labels project and kind, drops "Who wants to be hired" comments |
 | `exec` | provider | a template: one instance per program, run on a schedule; each row it prints (a JSON array or JSON Lines) becomes an item |
 | `gmail` | provider | a template: one instance per Gmail account, synced on a schedule, each message submitted to Intake (ported from oaken-mail) |
+| `imap` | provider | a template: one instance per IMAP mailbox, synced on a schedule (pull only; the password is in the OS keyring) |
+| `smtp` | provider | a template: one instance per sending account, with `check` and `send` commands (a send is confirmed first) |
+| `ollama` | llm_backend | the system's Ollama as the model backend: it needs no model, it lists the models Ollama has |
+| `ollama` | embedder | embeddings from an Ollama server (it needs a model: that is its own setting) |
+| `ollama-remote` | llm_backend | an Ollama server on another machine, with its own address |
+| `localname` | gateway | friendly `*.localhost` names for the console and API |
+
+## Versions, tags and the listing
+
+Every plugin says what it is, in its class: its own `version` (all `0.1.0` for now), the plugin API it speaks (`api_version`), the core
+versions it needs (`requires_core`, currently `>=1.0.0,<2`) and `tags` for what it is for (`mail`, `signal`, `model`, `generic`). `oaken plugins`
+reads these without importing anything: `oaken plugins --kind provider --tag mail`. Each plugin's first docstring line is its listing
+description, one fragment of 30 to 64 characters; tests keep all of that true.
+
+IMAP and SMTP need their libraries, which come as extras: `pip install "oaken-plugins[imap,smtp]"`.
 
 ## Not yet ported
 
-The Gmail provider's write side (flag, label, trash, send) is not ported yet. It is part of a provider's shape: a provider extends the contract with its own operations when it loads, and core needs nothing for them. oaken-mail has it.
+The write side of the Gmail and IMAP providers (flag, label, trash, move) is not ported yet. It is part of a provider's shape: a provider extends the contract with its own operations when it loads, and core needs nothing for them. oaken-mail has it.
 
 `oaken-provider-jmap`, `oaken-provider-maildir` and `oaken-provider-mbox` still speak oaken-mail's older plugin API
 (`oaken.plugins`) and sit at the top level of this repository as they were. They join `src/oaken_plugins/` once they are

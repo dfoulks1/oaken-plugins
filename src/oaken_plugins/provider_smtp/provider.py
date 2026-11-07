@@ -86,18 +86,20 @@ def _text(response: Any) -> str:
 
 
 class SmtpProvider(BaseTemplatePlugin, BaseProvider):
-    """Sending through one SMTP account."""
+    """SMTP accounts for sending mail, with check and send
+
+    Sending through one SMTP account."""
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
-    version: ClassVar[str] = "1"
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
+    version: ClassVar[str] = "0.1.0"
     tags: ClassVar[tuple[str, ...]] = ("mail",)
     config_model = SmtpConfig
     config: SmtpConfig
     contextual: ClassVar[tuple[str, ...]] = ("host", "from_address")  # an instance is a sending account: the server and who it sends as
     setup_help = (
         "Send-only, so set it up when you need it. TLS is required. Make an instance per sending account (the + on the Providers page) with its host "
-        "and from_address, then store its password in the OS keyring: `secret set provider NAME password` (asked for without echo; it is never in "
+        "and from_address, then store its password in the OS keyring: `secret set --kind provider --name NAME --key password` (asked for without echo; it is never in "
         "config.toml). `NAME check` says whether the sign-in works; `NAME send` sends a message, after you confirm it. " + TWO_STEP
     )
     config_example = (
@@ -115,7 +117,7 @@ class SmtpProvider(BaseTemplatePlugin, BaseProvider):
     # -- lifecycle -------------------------------------------------------------------------
     @property
     def _help(self) -> str:
-        return f"Store it with `{identity.prog} secret set provider {self.ctx.name} password`. {TWO_STEP}"
+        return f"Store it with `{identity.prog} secret set --kind provider --name {self.ctx.name} --key password`. {TWO_STEP}"
 
     async def _stored(self) -> str | None:
         if self.ctx.secrets is None:

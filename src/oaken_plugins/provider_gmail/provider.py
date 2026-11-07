@@ -203,12 +203,14 @@ class CheckOut(BaseModel):
 
 
 class GmailProvider(BaseTemplatePlugin, BaseProvider):
-    """One Gmail account as a source of mail."""
+    """Gmail accounts as a source of mail, one instance each
+
+    One Gmail account as a source of mail."""
     tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
-    requires_core = ">=0.0.0"  # the oaken-core versions it works with
-    version: ClassVar[str] = "1"
+    requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
+    version: ClassVar[str] = "0.1.0"
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     config_model = GmailConfig
     config: GmailConfig

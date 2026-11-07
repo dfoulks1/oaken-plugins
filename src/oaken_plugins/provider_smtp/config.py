@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """``[plugins.provider.<name>]`` for an SMTP account. Nothing here is a secret: the password lives only in the OS keyring, stored with
-`secret set provider <name> password` (asked for without echo). There is deliberately no way to put it in this file."""
+`secret set --kind provider --name <name> --key password` (asked for without echo). There is deliberately no way to put it in this file."""
 
 from typing import Literal
 
