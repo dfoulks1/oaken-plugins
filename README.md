@@ -36,6 +36,7 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `ini` | formatter | splits an INI file into one part per section |
 | `rfc822` | formatter | splits an email into `headers`, `text`, `html` and one part per attachment, and (`safemode = true`, the default) a `clean` part: the text a model should read, with quoted replies, signatures and footers cut and HTML turned to text |
 | `mail` | ingestor | stores email by Message-ID, threaded (with its `clean` part), and gives it back (`oaken item show`, `oaken item get`) |
+| `sieve` | triager | runs your Sieve (RFC 5228) scripts over incoming mail and labels the result (`sieve.folder`, `sieve.flags`, `sieve.disposition`...); edit them on the Sieve tab of the Pipeline page |
 | `jsonl` | provider | the by-hand door: pipe JSON Lines in, each line becomes an item |
 | `cve` | triager | rates NVD CVE rows: labels severity and product, drops CVEs below a score |
 | `kev` | triager | rates CISA KEV rows: labels them exploited, drops vendors you do not run |

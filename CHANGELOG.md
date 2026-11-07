@@ -7,6 +7,7 @@ The first release of oaken-plugins, for oaken-core 1.0 (`requires_core = ">=1.0.
 - **Mail:** `provider.gmail`, `provider.imap` (pull only) and `provider.smtp` (check and send), each a template with one instance per account; the
   `rfc822` formatter and the `mail` ingestor, which refuses anything that is not really mail. Ported from oaken-mail.
 - **Models:** `llm_backend.ollama` (needs no model: it only has to answer and list what it has), `llm_backend.ollama-remote`, `embedder.ollama`.
+- **Sieve:** `triager.sieve` runs your Sieve (RFC 5228) scripts over mail and labels the result. Ported from oaken-mail with its interpreter and its tests. Scripts are files in the plugin's folder, run in name order; a script never delivers, sends or deletes. It has its own tab on the Pipeline page (needs the console's plugin-tab support).
 - **Signals:** the `cve`, `kev`, `eol` and `hackernews` triagers. **Generic:** `exec`, `jsonl`, `ini`, `localname`.
 - Every plugin declares its version, the plugin API and core versions it needs, and tags; descriptions are one short line. Tests enforce it.
 - `imapclient`, `aiosmtplib` and `selectolax` come as extras: `oaken-plugins[imap]`, `[smtp]`, `[clean]`.

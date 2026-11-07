@@ -3,7 +3,7 @@ from oaken_core.plugins import catalog
 
 from test_catalog_declared import KINDS
 
-MAIL = {("provider", "gmail"), ("provider", "imap"), ("provider", "smtp"), ("formatter", "rfc822"), ("ingestor", "mail")}
+MAIL = {("provider", "gmail"), ("provider", "imap"), ("provider", "smtp"), ("formatter", "rfc822"), ("ingestor", "mail"), ("triager", "sieve")}
 
 
 def test_every_plugin_says_what_it_is_for_in_its_source() -> None:

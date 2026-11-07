@@ -49,6 +49,7 @@ oaken-core = { path = "../oaken-core", editable = true }
 dev = [
     "pytest",
     "pytest-asyncio",
+    "hypothesis",  # the Sieve safety tests are property tests
     "ruff",
     "mypy",
 ]
