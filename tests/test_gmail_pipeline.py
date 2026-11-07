@@ -151,3 +151,13 @@ async def test_an_eight_bit_message_survives_the_trip_through_a_text_payload_byt
         assert got.text.strip() == "café au lait"  # type: ignore[union-attr]  # decoded by its own charset, from the original bytes
     finally:
         await core.host.stop()
+
+
+async def test_a_sync_after_the_instance_is_reloaded_still_runs_on_the_live_one(tmp_path: Path, google: FakeGoogle) -> None:
+    core = await build(tmp_path, google)  # the job handler was registered once, on the object that exists now
+    try:
+        await core.host.reload("work")  # the Reload button: a fresh, started object replaces it; the runner still holds the old one's method
+        job = await sync(core)
+        assert job.status == "succeeded", job.last_error
+    finally:
+        await core.host.stop()

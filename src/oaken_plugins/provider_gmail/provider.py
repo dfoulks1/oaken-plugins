@@ -212,6 +212,7 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     config_model = GmailConfig
     config: GmailConfig
+    _live: ClassVar[dict[str, "GmailProvider"]] = {}  # the started instance of each account, by instance name
     contextual: ClassVar[tuple[str, ...]] = ("account", "client_secret_file")  # an instance is an account, and cannot sign in without the Google client file
     setup_help = (
         "Gmail needs a Google OAuth client of your own (yours, not ours): create a Desktop-app client in the Google Cloud console with the "
@@ -262,8 +263,11 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
             backoff=self.config.backoff, **extra,
         )  # fmt: skip
         self._api = GmailApi(self.config, self.tokens, self._http, sleep=sleep)
+        self._live[ctx.name] = self
 
     async def stop(self) -> None:
+        if self._live.get(self.ctx.name) is self:
+            del self._live[self.ctx.name]
         if self._api is not None:
             await self._http.aclose()
             self._api = None
@@ -271,7 +275,7 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
     @property
     def api(self) -> GmailApi:
         if self._api is None:
-            raise PluginError("gmail: start() was not called")
+            raise PluginError("gmail: this account is not running (it failed to start, is switched off, or was reloaded): see its row on the Providers page")
         return self._api
 
     async def _token_state(self, broken: bool, detail: str) -> None:
@@ -301,7 +305,13 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
 
     async def _sync_job(self, jctx: Any, payload: SyncIn) -> SyncOut:
         """Go on from the stored cursor: submit each message to Intake, then keep the cursor. A crash between the two repeats a batch, which
-        Intake's dedupe (the ``key``) and the ingestor (the Message-ID) both absorb."""
+        Intake's dedupe (the ``key``) and the ingestor (the Message-ID) both absorb.
+
+        Core registers this method once, bound to the object that existed then; a reload makes a new, started object and leaves the old,
+        stopped one registered. So the work goes to whichever instance of this account is live now."""
+        live = self._live.get(self.ctx.name)
+        if live is not None and live is not self:
+            return await live._sync_job(jctx, payload)
         db, account = self.ctx.db, self.config.account
         assert db is not None
         row = await db.fetchone("SELECT cursor FROM gmail_cursor WHERE account = ?", (account,))
