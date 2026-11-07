@@ -47,7 +47,7 @@ async def build(tmp_path: Path, google: FakeGoogle, **config: Any) -> Core:
     WORLD["google"] = google
     found = {"oaken_core.stores": [EP("sqlite", SqliteStore)], "oaken_core.formatters": [EP("rfc822", Rfc822Formatter)],
              "oaken_core.ingestors": [EP("mail", MailIngestor)], "oaken_core.providers": [EP("gmail", PretendGmail)]}  # fmt: skip
-    tables = {"store": {"sqlite": {"path": str(tmp_path / "core.db")}}, "provider": {"work": {"plugin": "gmail", "account": "work", **config}}}
+    tables = {"store": {"sqlite": {"path": str(tmp_path / "core.db")}}, "provider": {"work": {"plugin": "gmail", "account": "work", "client_secret_file": "/tmp/client.json", **config}}}
     core = Core(Settings(plugins=PluginTables(tables=tables)), clock=FakeClock(), discover=lambda g: found.get(g, []))
     await core.open()
     await core.host.start()
@@ -73,12 +73,12 @@ async def stored(core: Core) -> Any:
     return (await core.client.call("mail.list", {}, CLI)).output
 
 
-async def test_an_instance_is_a_template_and_the_account_is_what_makes_it_one(tmp_path: Path, google: FakeGoogle) -> None:
+async def test_an_instance_is_a_template_and_the_account_and_client_file_are_what_make_it_one(tmp_path: Path, google: FakeGoogle) -> None:
     core = await build(tmp_path, google)
     try:
         by = {s.name: s for s in core.host.statuses()}
         assert by["work"].started and by["work"].healthy and not by["work"].template  # the instance runs
-        assert core.host.contextual("provider", "gmail") == ("account",)  # and what makes one is the account
+        assert core.host.contextual("provider", "gmail") == ("account", "client_secret_file")  # and what makes one is the account and the Google client file it signs in with
     finally:
         await core.host.stop()
 

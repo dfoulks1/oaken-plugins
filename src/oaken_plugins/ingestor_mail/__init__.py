@@ -78,6 +78,8 @@ class MailIngestor(BaseIngestor):
         if "headers" not in item.parts:
             raise PluginError('not a mail item: it has no headers part. Set format = "rfc822" where it is submitted, then requeue it')
         headers: dict[str, list[str]] = item.parts["headers"].content
+        if not (headers.get("from") or headers.get("message-id")):  # text called mail that parses to no headers is not mail
+            raise PluginError("not a mail item: its headers carry neither From nor Message-ID")
         text = str(item.parts["text"].content) if "text" in item.parts else ""
         html = str(item.parts["html"].content) if "html" in item.parts else ""
         message_id = (_ids(_first(headers, "message-id")) or [""])[0] or "sha256:" + hashlib.sha256(json.dumps([headers, text], sort_keys=True).encode()).hexdigest()

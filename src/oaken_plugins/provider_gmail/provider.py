@@ -212,7 +212,7 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     config_model = GmailConfig
     config: GmailConfig
-    contextual: ClassVar[tuple[str, ...]] = ("account",)  # an instance is an account: its keyring entry, cursor and schedule
+    contextual: ClassVar[tuple[str, ...]] = ("account", "client_secret_file")  # an instance is an account, and cannot sign in without the Google client file
     setup_help = (
         "Gmail needs a Google OAuth client of your own (yours, not ours): create a Desktop-app client in the Google Cloud console with the "
         "Gmail API enabled, publish the app to Production (a Testing app drops its token after about a week), download its JSON and point "

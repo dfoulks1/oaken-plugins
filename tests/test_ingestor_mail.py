@@ -105,3 +105,10 @@ async def test_something_that_is_not_mail_is_refused_and_waits_in_the_failed_job
     assert (await messages(core)).total == 0
     (job,) = await core.runner.jobs.query(kind="intake.store")
     assert "not a mail item" in (job.last_error or "") and job.status in ("queued", "failed")  # held, with the reason, so it can be requeued once it is sent as mail
+
+
+async def test_text_sent_as_mail_that_has_no_headers_is_refused_too(core: Core) -> None:
+    await send(core, "this is not an email at all", format="rfc822")  # the formatter splits it into an empty headers part
+    assert (await messages(core)).total == 0
+    (job,) = await core.runner.jobs.query(kind="intake.store")
+    assert "neither From nor Message-ID" in (job.last_error or "")
