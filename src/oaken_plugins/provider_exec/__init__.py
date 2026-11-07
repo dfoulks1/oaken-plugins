@@ -55,7 +55,10 @@ def _at(row: Any, path: str) -> Any:
 
 class ExecProvider(BaseTemplatePlugin, BaseProvider):
     """A program, run on a schedule, as a source of items: each row it prints is submitted to intake."""
+    tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     contextual: ClassVar[tuple[str, ...]] = ("command",)
     config_model = ExecConfig

@@ -15,6 +15,9 @@ from oaken_core.plugins.base import BaseFormatter
 
 
 class Rfc822Formatter(BaseFormatter):
+    tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "1"
     formats: ClassVar[tuple[str, ...]] = ("rfc822", "email/rfc822", "message/rfc822")
     setup_help = ('Set `format = "rfc822"` on whatever submits messages (a provider, or `oaken intake submit --format rfc822`). The body may be the message as text, or '

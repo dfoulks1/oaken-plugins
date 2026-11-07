@@ -37,7 +37,10 @@ class HackerNewsConfig(BaseModel):
 
 class HackerNewsTriager(BaseTriager):
     """Rates Hacker News rows: labels the project and kind, drops job-seeker comments."""
+    tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it Hacker News rows (an `exec` instance running apache-mentions-hackernews.py)."

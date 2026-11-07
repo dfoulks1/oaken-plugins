@@ -5,7 +5,7 @@ Lifted from oaken-mail ``oaken_ollama`` (cf3b187).
 """
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx2
 
@@ -19,7 +19,10 @@ class OllamaEmbedder(BaseEmbedder):
     """An Ollama server as an embedder: the vectors behind the junk index, the answer shortcuts and ``embed``. The model is the
     instance's ``model`` setting. ``start`` confirms the model is installed, reads its context length and embeds one probe text to
     learn the vector size."""
+    tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     config_model = OllamaConfig
     requires_config = ("model",)
     setup_help = "Needs an Ollama server with an embedding model pulled (for example `ollama pull nomic-embed-text`). Set `model`."

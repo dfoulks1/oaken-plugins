@@ -5,7 +5,7 @@ Lifted from oaken-mail ``oaken_ollama`` (cf3b187). ``locality`` (unset means hos
 """
 
 import json
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx2
 
@@ -19,7 +19,10 @@ class OllamaLLM(BaseLLMBackend):
     """A local Ollama server as a model backend: plugins that ask a model (the ``llm`` triager and the like) are answered by it, and
     it lists the models it has, so a settings dialog can offer them in a dropdown. The model is the instance's ``model`` setting.
     Who may send it what is the router's call, from the instance's ``locality`` (unset means hosted, the strictest)."""
+    tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     config_model = OllamaConfig
     requires_config = ("model",)
     setup_help = "Needs an Ollama server (ollama.com) with a model pulled. Set `model`; `base_url` is http://127.0.0.1:11434 unless you say otherwise. Mark it `locality = \"local\"` so confidential items may use it."

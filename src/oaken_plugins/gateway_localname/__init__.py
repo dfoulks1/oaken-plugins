@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""``localname``: friendly names for the console and the MCP endpoint on this machine: http://oaken.localhost:<console port>/ and http://oakenmcp.localhost:<api port>/.
+"""``localname``: friendly names for the console and the MCP endpoint on this machine: http://oaken.localhost:$PORT/.
 
 The console stays on 127.0.0.1. This plugin only adds names to the Host values the guards accept. Every name must end in
 ``.localhost``: browsers resolve those to this machine themselves, so there is no DNS, no mDNS and nothing to rebind. Larger setups
@@ -31,7 +31,10 @@ class LocalnameConfig(BaseModel):
 
 class Localname(BaseFriendlyNames):
     """The console under a friendly ``*.localhost`` name, for this machine only."""
+    tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     kind: ClassVar[str] = "gateway"
     version: ClassVar[str] = "1"
     config_model = LocalnameConfig

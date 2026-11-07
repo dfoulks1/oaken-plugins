@@ -35,7 +35,10 @@ def severity(score: float) -> str:  # CVSS v3 bands
 
 class CveTriager(BaseTriager):
     """Rates NVD CVE rows: labels severity and product, drops the ones below a score."""
+    tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it NVD rows (an `exec` instance running apache-cves-nvd.py). Set `min_score` to drop low-scoring CVEs."

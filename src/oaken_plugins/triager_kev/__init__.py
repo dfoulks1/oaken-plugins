@@ -32,7 +32,10 @@ class KevConfig(BaseModel):
 
 class KevTriager(BaseTriager):
     """Rates CISA KEV rows: labels them exploited, drops vendors you do not run."""
+    tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     rank: ClassVar[int] = 10
     setup_help = "Feed it CISA KEV rows (an `exec` instance running exploited-vulns-cisa.py). Set `vendors` to the ones you run."

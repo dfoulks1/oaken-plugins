@@ -57,7 +57,10 @@ class ListOut(BaseModel):
 
 class MailIngestor(BaseIngestor):
     """Email, stored by Message-ID and threaded."""
+    tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
 
+    api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
+    requires_core = ">=0.0.0"  # the oaken-core versions it works with
     version: ClassVar[str] = "1"
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     setup_help = ('Replaces the built-in items ingestor. Items must come in as mail: set `format = "rfc822"` where they are submitted. '
