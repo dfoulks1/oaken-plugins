@@ -97,7 +97,7 @@ def _paths(parts: dict[str, Part]) -> list[str]:
 
 class Rfc822Formatter(BaseFormatter):
     tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
-    icon: ClassVar[str] = "bi-envelope-open"  # an email, opened up
+    icon: ClassVar[str] = "bi-envelope"  # an email
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.2.0"  # 0.2.0: safe mode and the `clean` part
