@@ -36,6 +36,7 @@ class EolTriager(BaseTriager):
 
     Rates end-of-life rows: labels how near the date is, drops products you do not run."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
+    icon: ClassVar[str] = "bi-hourglass-split"  # end of life
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

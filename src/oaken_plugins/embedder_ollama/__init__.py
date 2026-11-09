@@ -22,6 +22,7 @@ class OllamaEmbedder(BaseEmbedder):
     instance's ``model`` setting. ``start`` confirms the model is installed, reads its context length and embeds one probe text to
     learn the vector size."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
+    icon: ClassVar[str] = "bi-diagram-3"  # embeddings
     version: ClassVar[str] = "0.1.0"
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)

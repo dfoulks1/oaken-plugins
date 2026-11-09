@@ -15,14 +15,12 @@ import asyncio
 import base64
 import json
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Any, ClassVar
 
 from pydantic import BaseModel
 
 from oaken_core import identity
-from oaken_core.clock import fmt_ts
-from oaken_core.errors import OakenError, PluginError
+from oaken_core.errors import NotFound, OakenError, PluginError
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseProvider, BaseTemplatePlugin, command
 from oaken_core.plugins.contracts import Health, PluginContext, PluginJobHandler, PluginOpContext, PluginScheduledTask
@@ -30,6 +28,7 @@ from oaken_plugins.provider_imap.config import ImapConfig
 from oaken_plugins.provider_imap.session import Folder, ImapError, LoginRejected, Session
 
 log = get_logger("oaken_plugins.imap")
+CURSOR_COLLECTION = "imap_cursor"  # one record per account in the record store: its per-folder sync bookmark
 
 ROLES = {"trash": ("\\trash", {"trash", "deleted items", "deleted messages", "deleted"}), "junk": ("\\junk", {"junk", "spam", "junk e-mail", "junk email", "bulk mail"})}
 
@@ -80,7 +79,7 @@ class ImapProvider(BaseTemplatePlugin, BaseProvider):
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     tags: ClassVar[tuple[str, ...]] = ("mail",)
-    migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
+    icon: ClassVar[str] = "bi-envelope-arrow-down"  # mail coming in
     config_model = ImapConfig
     config: ImapConfig
     contextual: ClassVar[tuple[str, ...]] = ("host", "username")  # an instance is a mailbox: where it is and who signs in
@@ -157,23 +156,28 @@ class ImapProvider(BaseTemplatePlugin, BaseProvider):
                                     every=self.config.poll_seconds if started else 300.0)]  # fmt: skip
 
     async def _cursor(self) -> dict[str, dict[str, int]]:
-        db = self.ctx.db
-        assert db is not None
-        row = await db.fetchone("SELECT cursor FROM imap_cursor WHERE account = ?", (self.ctx.name,))
+        store = self.ctx.store
+        if store is None:
+            raise PluginError("imap: no record store is available to keep the sync cursor")
         try:
-            return {str(k): {"v": int(v["v"]), "u": int(v["u"])} for k, v in json.loads(row["cursor"]).items()} if row else {}
+            rec = await store.get(CURSOR_COLLECTION, self.ctx.name)
+        except NotFound:
+            return {}
+        try:
+            raw = json.loads(rec.data.get("cursor") or "{}")
+            return {str(k): {"v": int(v["v"]), "u": int(v["u"])} for k, v in raw.items()}
         except (ValueError, KeyError, TypeError, AttributeError):
             log.warning("imap cursor not understood; starting a full sync")
             return {}
 
     async def _keep(self, cursor: dict[str, dict[str, int]]) -> None:
-        db = self.ctx.db
-        assert db is not None
-        await db.execute(
-            "INSERT INTO imap_cursor (account, cursor, updated_at) VALUES (?,?,?)"
-            " ON CONFLICT(account) DO UPDATE SET cursor = excluded.cursor, updated_at = excluded.updated_at",
-            (self.ctx.name, json.dumps(cursor, separators=(",", ":")), fmt_ts(self.ctx.clock.now())),
-        )
+        store = self.ctx.store
+        assert store is not None
+        text = json.dumps(cursor, separators=(",", ":"))
+        try:
+            await store.update(CURSOR_COLLECTION, self.ctx.name, {"cursor": text})
+        except NotFound:
+            await store.create(CURSOR_COLLECTION, {"cursor": text}, id=self.ctx.name)
 
     async def _sync_job(self, jctx: Any, payload: SyncIn) -> SyncOut:
         """Read each folder from the UID it was at, hand every message to Intake, and keep the cursor after each page. A crash between the

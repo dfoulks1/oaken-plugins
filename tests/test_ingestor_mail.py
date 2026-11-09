@@ -135,3 +135,68 @@ async def test_safe_mode_can_be_turned_off_and_then_the_formatter_gives_the_mess
     formatter.config = Rfc822Config(safemode=False)
     assert sorted(await formatter.split(REPLY_ALL)) == ["headers", "text"]  # no clean part
     assert Rfc822Config().safemode is True  # on unless someone says otherwise
+
+
+async def test_the_headers_page_counts_every_header_name_in_the_stored_mail(core: Core) -> None:
+    await send(core, FIRST, format="rfc822")
+    await send(core, REPLY, format="rfc822")
+    out = (await core.client.call("mail.headers", {}, CLI)).output
+    by_name = {h.name: h.messages for h in out.headers}  # type: ignore[union-attr]
+    assert by_name["subject"] == 2 and by_name["cc"] == 1 and by_name["in-reply-to"] == 1  # a header only one message carries counts once
+    assert out.headers[0].messages == 2 and len(out.rows) == len(out.headers)  # type: ignore[union-attr]  # most common first
+
+
+async def test_search_understands_gmail_style_operators_and_the_read_state(core: Core) -> None:
+    await send(core, FIRST, format="rfc822")
+    await send(core, REPLY, format="rfc822")
+    find = lambda text: core.client.call("mail.search", {"text": text}, CLI)  # noqa: E731
+    assert [m.from_addr for m in (await find("from:ann")).output.messages] == ["ann@acme.test"]  # type: ignore[union-attr]
+    assert (await find("has:attachment")).output.total == 1 and (await find("subject:hiring is:unread")).output.total == 2  # type: ignore[union-attr]
+    assert (await find("staff -interested")).output.total == 1 and (await find("after:2026-11-03 before:2026-11-04")).output.total == 2  # type: ignore[union-attr]
+    first = (await messages(core, thread="m1@acme.test")).messages[-1].subject_id
+    await core.client.call("mail.mark_read", {"subject_ids": [first]}, CLI, confirm=True)
+    assert (await find("is:read")).output.total == 1 and (await find("is:unread")).output.total == 1  # type: ignore[union-attr]
+
+
+async def test_the_thread_command_returns_the_tree_with_parent_and_depth(core: Core) -> None:
+    await send(core, FIRST, format="rfc822")
+    await send(core, REPLY, format="rfc822")
+    some = (await messages(core)).messages[0].subject_id
+    out = (await core.client.call("mail.thread", {"subject_id": some}, CLI)).output
+    assert [(t.parent_id is None, t.depth) for t in out.items] == [(True, 0), (False, 1)] and out.total == 2  # type: ignore[union-attr]
+    assert out.items[1].parent_id == out.items[0].subject_id  # type: ignore[union-attr]  # the reply sits under the message it answers
+
+
+@pytest.fixture
+async def stripping_core(tmp_path: Path) -> AsyncIterator[Core]:
+    found = {"oaken_core.stores": [EP("sqlite", SqliteStore)], "oaken_core.formatters": [EP("rfc822", Rfc822Formatter)], "oaken_core.ingestors": [EP("mail", MailIngestor)]}
+    tables = {"store": {"sqlite": {"path": str(tmp_path / "core.db")}}, "formatter": {"rfc822": {"strip_attachments": True, "quarantine_dir": str(tmp_path / "q")}}}
+    c = Core(Settings(plugins=PluginTables(tables=tables)), clock=FakeClock(), discover=lambda g: found.get(g, []))
+    await c.open()
+    await c.host.start()
+    try:
+        yield c
+    finally:
+        await c.host.stop()
+
+
+async def test_a_stripped_attachment_is_pointed_to_from_the_stored_message(stripping_core: Core, tmp_path: Path) -> None:
+    await send(stripping_core, FIRST, format="rfc822")
+    (m,) = (await messages(stripping_core)).messages
+    got = (await stripping_core.client.call("mail.get", {"subject_id": m.subject_id}, CLI)).output
+    sha = got.parts["attachment-1"]["sha256"]  # type: ignore[union-attr]
+    assert (tmp_path / "q" / sha[:2] / f"{sha}.quarantined").is_file() and got.parts["attachment-1"]["filename"] == "jd.pdf"  # type: ignore[union-attr]
+
+
+async def test_a_date_of_minus_zero_is_utc_not_this_machines_zone(core: Core, monkeypatch: pytest.MonkeyPatch) -> None:
+    import time
+
+    monkeypatch.setenv("TZ", "America/New_York")  # `-0000` parses without a zone; it was read as local time, five hours off
+    time.tzset()
+    try:
+        await send(core, REPLY.replace(b"11:00:00 +0000", b"15:57:27 -0000"), format="rfc822")
+        (m,) = (await messages(core)).messages
+        assert m.sent_at == "2026-11-03T15:57:27+00:00"
+    finally:
+        monkeypatch.undo()
+        time.tzset()

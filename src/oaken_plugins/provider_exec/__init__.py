@@ -58,6 +58,7 @@ class ExecProvider(BaseTemplatePlugin, BaseProvider):
 
     A program, run on a schedule, as a source of items: each row it prints is submitted to intake."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
+    icon: ClassVar[str] = "bi-terminal"  # runs a program
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

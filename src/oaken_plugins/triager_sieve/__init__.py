@@ -3,7 +3,7 @@
 
 Sieve (RFC 5228), ported from oaken-mail. Scripts are ``*.sieve`` files in the plugin's folder, run in name order; edit them on the Sieve tab of the
 Pipeline page or with ``<instance> save``. A script decides a disposition and labels, flags and recorded intents; it never delivers, sends or
-deletes. The result goes on the message as labels: ``sieve.disposition`` (inbox, filed or discarded), ``sieve.folder``, ``sieve.flags``,
+deletes. The result goes on the message as labels: ``sieve.disposition`` (inbox, filed or discarded), ``mail.folder`` (the folder label), ``sieve.flags``,
 ``sieve.labels`` and ``sieve.intents`` (a redirect or reject the script asked for, recorded and never done). A message no script touched is
 left alone. ``reject_discarded = true`` makes a script's `discard` reject the message; off, it is stored and labelled.
 
@@ -36,7 +36,6 @@ log = get_logger("oaken_plugins.sieve")
 
 NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 DISPOSITION = BaseLabel.new("sieve.disposition", "What a Sieve script decided for the message", ("inbox", "filed", "discarded"))
-FOLDER = BaseLabel.new("sieve.folder", "The folder a script filed the message into")
 FLAGS = BaseLabel.new("sieve.flags", "The flags a script set, comma separated")
 LABELS = BaseLabel.new("sieve.labels", "The labels a script added, comma separated")
 INTENTS = BaseLabel.new("sieve.intents", "What a script asked for and was not allowed to do (redirect, reject, vacation), comma separated")
@@ -94,6 +93,8 @@ class SieveTriager(BaseTriager):
     Scripts are ``*.sieve`` files in this plugin's folder, run in name order; the Sieve tab of the Pipeline page edits them."""
 
     tags: ClassVar[tuple[str, ...]] = ("mail",)
+
+    icon: ClassVar[str] = "bi-signpost-split"  # sieve routing
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
@@ -105,7 +106,7 @@ class SieveTriager(BaseTriager):
     config_example = "[plugins.triager.sieve]\nreject_discarded = false   # true: a script's discard rejects the message instead of labelling it"
 
     def labels(self) -> list[BaseLabel]:
-        return [DISPOSITION, FOLDER, FLAGS, LABELS, INTENTS, ERROR]
+        return [DISPOSITION, FLAGS, LABELS, INTENTS, ERROR]  # the folder is mail.folder, the one folder label
 
     def ui(self) -> UiSpec:
         return UiSpec(pages=(UiPage("scripts", "Sieve", load="load_page", submit="save", test="check", tab="Sieve", tab_after="labels",
@@ -159,8 +160,14 @@ class SieveTriager(BaseTriager):
             return Verdict("reject", f"sieve discarded it ({result.disposition_rule})", labels)
         return Verdict("accept", f"sieve: {result.disposition} ({result.disposition_rule})", labels)
 
-    @staticmethod
-    def _labels(result: SieveResult) -> dict[str, str]:
+    def _folder(self, name: str) -> str:
+        """A script's folder name as a mail.folder value: levels joined by ``.`` (a sub-label), a leading INBOX level dropped (INBOX.ASF.infra is ASF.infra)."""
+        parts = [p for p in name.split(self.config.folder_separator) if p]
+        if parts and parts[0].upper() == "INBOX":
+            parts = parts[1:]
+        return ".".join(parts) or "Inbox"
+
+    def _labels(self, result: SieveResult) -> dict[str, str]:
         touched = result.effects or result.errors or result.disposition_rule != "implicit-keep"
         if not touched:
             return {}
@@ -170,7 +177,7 @@ class SieveTriager(BaseTriager):
             if values:
                 out[key] = ", ".join(values)
         if place := result.of("location"):
-            out[FOLDER.key] = place[-1].value  # a message lives in one folder: the last place a script put it
+            out["mail.folder"] = self._folder(place[-1].value)  # a message lives in one folder: the last place a script put it
         if result.errors:
             out[ERROR.key] = result.errors[0][:200]
         return out

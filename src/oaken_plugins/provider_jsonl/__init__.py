@@ -75,6 +75,7 @@ class JsonlProvider(BaseProvider):
 
     The by-hand door: pipe a file of JSON Lines in and each line becomes an item. Nothing keeps it open; ``socket`` is the machine's door."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
+    icon: ClassVar[str] = "bi-braces"  # JSON Lines
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

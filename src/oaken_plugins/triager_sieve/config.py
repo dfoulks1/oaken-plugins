@@ -16,4 +16,5 @@ class SieveSettings(BaseModel):
 
 
 class SieveConfig(SieveSettings):
+    folder_separator: str = Field(default=".", min_length=1, max_length=1)  # what a script puts between folder levels (Fastmail: "."); mail.folder always stores them joined by "."
     reject_discarded: bool = False  # a script's `discard` rejects the message (not stored). Off: it is stored, labelled `sieve.disposition = discarded`

@@ -90,7 +90,7 @@ async def test_a_script_files_and_flags_a_message_and_a_message_it_does_not_touc
     await send(core, LISTS)
     await send(core, PLAIN)
     got = await labels_of(core, "l1@x.test")
-    assert got["sieve.disposition"] == "filed" and got["sieve.folder"] == "Lists" and got["sieve.flags"] == "\\Flagged"
+    assert got["sieve.disposition"] == "filed" and got["mail.folder"] == "Lists" and got["sieve.flags"] == "\\Flagged"
     assert not any(k.startswith("sieve.") for k in await labels_of(core, "p1@x.test"))  # no script touched it: left alone
 
 
@@ -138,7 +138,7 @@ async def test_scripts_run_in_name_order_and_a_broken_one_is_skipped_and_reporte
     listed = (await core.client.call("sieve.scripts", {}, CLI)).output
     assert [(s.name, s.ok) for s in listed.scripts] == [("05-broken", False), ("10-a", True), ("20-b", True)]  # type: ignore[union-attr]
     await send(core, PLAIN)
-    assert (await labels_of(core, "p1@x.test"))["sieve.folder"] == "First"  # the first script to file it wins
+    assert (await labels_of(core, "p1@x.test"))["mail.folder"] == "First"  # the first script to file it wins
 
 
 async def test_deleting_a_script_stops_it_applying(core: Core) -> None:

@@ -322,3 +322,18 @@ async def test_a_folder_pull_is_refused_because_gmail_has_labels_not_folders() -
     rig = await started()
     with pytest.raises(ProviderError):
         _ = [b async for b in rig.provider.pull(None, "INBOX")]
+
+
+async def test_send_posts_one_message_with_bcc_and_no_retry() -> None:
+    from email import message_from_bytes
+
+    from oaken_core.errors import PluginError
+    from oaken_plugins.provider_gmail.provider import SendIn
+
+    rig = await started()
+    out = await rig.provider._cmd_send(None, SendIn(to=["a@example.com"], bcc=["b@example.com"], subject="hi", body="yo"))  # type: ignore[arg-type]
+    assert out.id == "sent1" and len(rig.google.sent) == 1
+    sent = message_from_bytes(rig.google.sent[0])
+    assert sent["To"] == "a@example.com" and sent["Bcc"] == "b@example.com" and sent["Message-ID"] == out.message_id
+    with pytest.raises(PluginError):
+        await rig.provider._cmd_send(None, SendIn(subject="nobody"))  # type: ignore[arg-type]

@@ -6,7 +6,7 @@ is core's shape. Each message is submitted as raw RFC 822 bytes (base64 in JSON,
 so Intake splits it, the dedupe triager drops a repeat, and the ``mail`` ingestor stores it. Nothing here parses mail or stores it.
 
 A template: each instance is one account (``account``), with its own keyring entry, cursor and schedule. Spam and Trash never
-sync. Writing back (flags, labels, trash, send) is part of a provider's shape and oaken-mail's version has it; it is not ported yet, and
+sync. Writing back (flags, labels, trash) is part of a provider's shape and oaken-mail's version has it; it is not ported yet, and
 core needs nothing when it is: a provider extends the contract with its own operations when it loads.
 
 The sync cursor is a small JSON text:
@@ -17,26 +17,29 @@ The sync cursor is a small JSON text:
 * ``{"mode":"inc", "history":H, "page":T?}``: caught up; the next sync asks Gmail what changed since ``H``.
 """
 
+import time
 import asyncio
 import base64
 import binascii
 import dataclasses
 import json
+from email.message import EmailMessage
+from email.policy import SMTP as SMTP_POLICY
+from email.utils import formatdate, make_msgid
 from collections.abc import AsyncIterator, Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, ClassVar
 
 import httpx2
 from pydantic import BaseModel
 
-from oaken_core.clock import fmt_ts
 from oaken_core.errors import NotFound, OakenError, PluginError, ProviderError
 from oaken_core.events import PluginEvent
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseProvider, BaseTemplatePlugin, command
 from oaken_core.plugins.contracts import Health, PluginContext, PluginJobHandler, PluginOpContext, PluginPreview, PluginScheduledTask
+from oaken_plugins.mixins.mail import MailProvider
 from oaken_plugins.provider_gmail.api import GmailApi
 from oaken_plugins.provider_gmail.config import GmailConfig
 from oaken_plugins.provider_gmail.oauth import authorize, load_client
@@ -45,6 +48,7 @@ from oaken_plugins.provider_gmail.tokens import ClientCredentials, KeyringStore,
 log = get_logger("oaken_plugins.gmail")
 SEEN, FLAGGED = "\\Seen", "\\Flagged"
 UNREAD, STARRED, INBOX = "UNREAD", "STARRED", "INBOX"
+CURSOR_COLLECTION = "gmail_cursor"  # one record per account in the record store: its sync bookmark
 NEVER_SYNCED = frozenset({"SPAM", "TRASH"})
 
 
@@ -186,10 +190,28 @@ class SyncIn(BaseModel):
 class SyncOut(BaseModel):
     submitted: int  # messages handed to Intake this run
     batches: int
+    more: bool = False  # stopped on its time budget with mail still to fetch: the next run goes on from the saved cursor
 
 
 class Empty(BaseModel):
     pass
+
+
+class SendIn(BaseModel):
+    to: list[str] = []
+    cc: list[str] = []
+    bcc: list[str] = []
+    subject: str = ""
+    body: str = ""
+    in_reply_to: str | None = None
+    references: str | None = None
+    thread_id: str | None = None  # a Gmail thread id: keeps a reply in its conversation
+
+
+class SendOut(BaseModel):
+    id: str  # Gmail's id for the sent message
+    message_id: str  # its Message-ID header
+    thread_id: str
 
 
 class AuthOut(BaseModel):
@@ -202,16 +224,16 @@ class CheckOut(BaseModel):
     detail: str
 
 
-class GmailProvider(BaseTemplatePlugin, BaseProvider):
+class GmailProvider(MailProvider, BaseTemplatePlugin, BaseProvider):
     """Gmail accounts as a source of mail, one instance each
 
     One Gmail account as a source of mail."""
     tags: ClassVar[tuple[str, ...]] = ("mail",)  # what it is for
+    icon: ClassVar[str] = "bi-google"  # Gmail
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
-    version: ClassVar[str] = "0.1.0"
-    migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
+    version: ClassVar[str] = "0.3.0"  # 0.3.0: send; 0.2.0: set_read (write-back of read state)
     config_model = GmailConfig
     config: GmailConfig
     _live: ClassVar[dict[str, "GmailProvider"]] = {}  # the started instance of each account, by instance name
@@ -221,7 +243,7 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
         "Gmail API enabled, publish the app to Production (a Testing app drops its token after about a week), download its JSON and point "
         "client_secret_file at it. Make an instance per account (the + on a stage's page), then `oaken <instance> auth` and open the address "
         "it prints to sign in; `oaken <instance> check` says whether it worked. It syncs every poll_seconds. Leave include_labels empty to sync "
-        "all mail; Spam and Trash never sync. Set confidential = true to keep this account's mail off hosted models."
+        "all mail; Spam and Trash never sync. write_back (default false) lets changes made here reach Gmail. Set confidential = true to keep this account's mail off hosted models."
     )
     config_example = (
         "[plugins.provider.gmail_work]\n"
@@ -231,6 +253,7 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
         "include_labels = []   # empty = all mail\n"
         "poll_seconds = 300\n"
         "confidential = false\n"
+        "write_back = false   # true: reading or marking mail here also changes it in Gmail\n"
     )
 
     def __init__(
@@ -314,23 +337,43 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
         live = self._live.get(self.ctx.name)
         if live is not None and live is not self:
             return await live._sync_job(jctx, payload)
-        db, account = self.ctx.db, self.config.account
-        assert db is not None
-        row = await db.fetchone("SELECT cursor FROM gmail_cursor WHERE account = ?", (account,))
+        account = self.config.account
         sent = batches = 0
-        async for batch in self.pull(row["cursor"] if row else None):
+        more = False
+        started = time.monotonic()
+        async for batch in self.pull(await self._load_cursor(account)):
             for m in batch.messages:
                 await self.submit({"base64": base64.b64encode(m.raw_bytes).decode()}, source=f"gmail:{account}", key=f"gmail:{account}:{m.provider_id}",
                                   format="rfc822", labels={"confidential": "true"} if self.config.confidential else None)  # fmt: skip
                 sent += 1
             if batch.next_cursor is not None:
-                await db.execute(
-                    "INSERT INTO gmail_cursor (account, cursor, updated_at) VALUES (?,?,?)"
-                    " ON CONFLICT(account) DO UPDATE SET cursor = excluded.cursor, updated_at = excluded.updated_at",
-                    (account, batch.next_cursor, fmt_ts(self.ctx.clock.now())),
-                )  # fmt: skip
+                await self._save_cursor(account, batch.next_cursor)
             batches += 1
-        return SyncOut(submitted=sent, batches=batches)
+            if batch.next_cursor is not None and time.monotonic() - started >= self.config.sync_budget_seconds:
+                more = True  # a long first sync (a backfill) ends cleanly here, not at core's job timeout; the saved cursor carries on
+                break
+        return SyncOut(submitted=sent, batches=batches, more=more)
+
+    # The sync cursor is durable provider state, kept as a record (not SQL, not the cache): one
+    # record per account in the CURSOR_COLLECTION, its data a single opaque ``cursor`` text.
+    async def _load_cursor(self, account: str) -> str | None:
+        store = self.ctx.store
+        if store is None:
+            raise PluginError("gmail: no record store is available to keep the sync cursor")
+        try:
+            rec = await store.get(CURSOR_COLLECTION, account)
+        except NotFound:
+            return None
+        value = rec.data.get("cursor")
+        return value if isinstance(value, str) else None
+
+    async def _save_cursor(self, account: str, cursor: str) -> None:
+        store = self.ctx.store
+        assert store is not None
+        try:
+            await store.update(CURSOR_COLLECTION, account, {"cursor": cursor})
+        except NotFound:
+            await store.create(CURSOR_COLLECTION, {"cursor": cursor}, id=account)
 
     # -- auth ------------------------------------------------------------------------------
     @command("check", "Does the stored sign-in work? Asks Gmail for this account's profile.", input=Empty, output=CheckOut)
@@ -360,6 +403,35 @@ class GmailProvider(BaseTemplatePlugin, BaseProvider):
         self._auth = asyncio.create_task(finish(), name=f"gmail-auth-{self.config.account}")
         url = await asyncio.wait_for(shown, 30)
         return AuthOut(url=url, note="Open it in a browser on this machine; this finishes when Google redirects back. `check` says whether it worked.")
+    async def _preview_send(self, ctx: PluginOpContext, inp: SendIn) -> PluginPreview:
+        n = len({a.lower() for a in (*inp.to, *inp.cc, *inp.bcc)})
+        return PluginPreview(f"Send a message from {self.config.account!r} to {n} recipient{'s' if n != 1 else ''} through Gmail", (), 0)
+
+    @command("send", "Send a message from this account. Gmail sets From and drops Bcc from what the others see.", input=SendIn, output=SendOut,
+             permission="mutate", preview="_preview_send", mcp="never")  # fmt: skip
+    async def _cmd_send(self, ctx: PluginOpContext, inp: SendIn) -> SendOut:
+        if not (inp.to or inp.cc or inp.bcc):
+            raise PluginError("gmail: a message needs at least one recipient")
+        msg = EmailMessage()
+        msg["Date"], msg["Subject"], msg["Message-ID"] = formatdate(localtime=False), inp.subject, make_msgid()
+        for name, values in (("To", inp.to), ("Cc", inp.cc), ("Bcc", inp.bcc), ("In-Reply-To", inp.in_reply_to), ("References", inp.references)):
+            if values:
+                msg[name] = ", ".join(values) if isinstance(values, list) else values
+        msg.set_content(inp.body)
+        raw = base64.urlsafe_b64encode(msg.as_bytes(policy=SMTP_POLICY)).decode()
+        body = {"raw": raw, **({"threadId": inp.thread_id} if inp.thread_id else {})}
+        sent = await self.api.request("POST", "/messages/send", json=body, safe_to_retry=False)  # a repeat would send twice
+        return SendOut(id=sent["id"], message_id=msg["Message-ID"], thread_id=sent.get("threadId", ""))
+
+    def key_prefix_of(self) -> str:
+        return f"gmail:{self.config.account}:"
+
+    async def set_read(self, provider_ids: Sequence[str], read: bool) -> None:
+        ids = list(provider_ids)
+        for i in range(0, len(ids), 1000):  # Gmail's batchModify takes up to 1000 ids
+            body = {"ids": ids[i : i + 1000], "removeLabelIds" if read else "addLabelIds": [UNREAD]}
+            await self.api.request("POST", "/messages/batchModify", json=body, safe_to_retry=False)
+
     async def authenticate(self, ctx: PluginContext) -> None:
         """Check that a stored token works and carries the right scope (no browser)."""
         await self.api.request("GET", "/profile")

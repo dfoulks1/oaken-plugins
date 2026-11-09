@@ -94,6 +94,7 @@ class SmtpProvider(BaseTemplatePlugin, BaseProvider):
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     version: ClassVar[str] = "0.1.0"
     tags: ClassVar[tuple[str, ...]] = ("mail",)
+    icon: ClassVar[str] = "bi-envelope-arrow-up"  # mail going out
     config_model = SmtpConfig
     config: SmtpConfig
     contextual: ClassVar[tuple[str, ...]] = ("host", "from_address")  # an instance is a sending account: the server and who it sends as

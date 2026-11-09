@@ -1,0 +1,24 @@
+# Generates typed Python from each store-owning plugin's migrations (the schema) and its queries/*.sql.
+# Regenerate: uv run sqlc generate   (a test fails when the checked-in code is stale)
+#
+# A plugin owns its store (ADR 0016): schema in <plugin>/migrations, hand-written SQL in
+# <plugin>/queries/*.sql (the artifact a database reviewer reads), generated code in <plugin>/dbgen.
+# One sql block per plugin that keeps a store; add a block when another plugin grows one.
+version: "2"
+plugins:
+  - name: python
+    wasm:
+      url: https://github.com/rayakame/sqlc-gen-better-python/releases/download/v0.9.0/sqlc-gen-better-python.wasm
+      sha256: d1787aa32e61f2e73c81a4f93b3e5a9beeec918952cff3183fb96313057f58a8
+sql:
+  - engine: sqlite
+    schema: src/oaken_plugins/ingestor_mail/migrations
+    queries: src/oaken_plugins/ingestor_mail/queries
+    codegen:
+      - out: src/oaken_plugins/ingestor_mail/dbgen/sqlite
+        plugin: python
+        options:
+          package: oaken_plugins.ingestor_mail.dbgen.sqlite
+          emit_init_file: true
+          sql_driver: aiosqlite
+          model_type: dataclass

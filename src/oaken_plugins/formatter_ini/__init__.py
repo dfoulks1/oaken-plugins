@@ -17,6 +17,7 @@ class IniFormatter(BaseFormatter):
     Splits an INI file into one part per section, so triagers and analyzers read the section they need. A part's content is that
     section's keys and values."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
+    icon: ClassVar[str] = "bi-file-earmark-code"  # INI file
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

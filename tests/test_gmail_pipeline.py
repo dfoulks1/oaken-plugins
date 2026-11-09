@@ -90,8 +90,8 @@ async def test_a_sync_job_pulls_hands_each_message_to_intake_and_keeps_the_curso
         assert job.status == "succeeded"
         out = await stored(core)
         assert out.total == 3 and {m.subject for m in out.messages} == {"hello 1", "hello 2", "hello 3"}  # formatted by rfc822, stored by the mail ingestor
-        row = await core.client.svc.db.fetchone("SELECT cursor FROM gmail_cursor WHERE account = 'work'")
-        assert row is not None and '"mode":"inc"' in row["cursor"].replace(" ", "")  # caught up, and it knows where
+        rec = await core.host.store.get("gmail_cursor", "work")  # the cursor lives in the record store now, not a table
+        assert '"mode":"inc"' in rec.data["cursor"].replace(" ", "")  # caught up, and it knows where
         google.add()  # a new message arrives
         await sync(core)
         assert (await stored(core)).total == 4  # only the new one came: it went on from the cursor
@@ -105,7 +105,7 @@ async def test_a_second_pull_from_scratch_stores_nothing_twice(tmp_path: Path, g
     core = await build(tmp_path, google)
     try:
         await sync(core)
-        await core.client.svc.db.execute("DELETE FROM gmail_cursor")  # a lost cursor: everything is pulled again
+        await core.host.store.delete("gmail_cursor", "work")  # a lost cursor: everything is pulled again
         await sync(core)
         assert (await stored(core)).total == 3  # the ingestor knows a message by its Message-ID
     finally:

@@ -17,6 +17,7 @@ class CveFormatter(BaseFormatter):
     Splits a CVE record (a JSON object: ``cve``, ``published``, ``products``, ``score``, ``description``; KEV: ``date_added``, ``vendor``, ``product``, ``name``, ``ransomware``, ``due``) into one part per
     top-level key, so triagers and analyzers read the field they need. Braces are optional."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
+    icon: ClassVar[str] = "bi-bug"  # CVE
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

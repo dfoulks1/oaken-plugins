@@ -52,6 +52,7 @@ dev = [
     "hypothesis",  # the Sieve safety tests are property tests
     "ruff",
     "mypy",
+    "sqlc-bin>=1.31.1.post1",  # generates typed query code from queries/*.sql; no hand-written SQL in a plugin
 ]
 
 [tool.pytest.ini_options]

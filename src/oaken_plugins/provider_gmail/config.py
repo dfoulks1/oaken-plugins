@@ -24,8 +24,10 @@ class GmailConfig(BaseModel):
     exclude_labels: list[str] = []  # label names or ids; Spam and Trash are always excluded
     poll_seconds: float = Field(default=300.0, ge=10)  # how often this account is synced
     confidential: bool = False  # label everything from this account confidential: it never goes to a hosted model
+    write_back: bool = False  # push read/unread changes made here to Gmail; off keeps them local
+    sync_budget_seconds: float = Field(default=480.0, ge=10)  # a sync run stops itself after this long, between batches, and the next run goes on; core cuts a job off at 600 s
     page_size: int = Field(default=100, ge=1, le=500)  # messages per batch of a full sync
-    concurrency: int = Field(default=4, ge=1, le=50)  # requests in flight at once
+    concurrency: int = Field(default=10, ge=1, le=50)  # requests in flight at once; Gmail allows far more, so a backfill is not throttled by us
     timeout: float = Field(default=30.0, gt=0)  # seconds, per request
     max_retries: int = Field(default=8, ge=0, le=20)  # extra tries on 429 / rate limit / 5xx
     backoff: float = Field(default=1.0, ge=0)  # seconds, doubled each retry, at most a minute

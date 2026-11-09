@@ -34,6 +34,7 @@ class Localname(BaseFriendlyNames):
 
     The console under a friendly ``*.localhost`` name, for this machine only."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
+    icon: ClassVar[str] = "bi-hdd-network"  # local names
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

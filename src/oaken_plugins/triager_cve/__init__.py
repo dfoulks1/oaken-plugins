@@ -38,6 +38,7 @@ class CveTriager(BaseTriager):
 
     Rates NVD CVE rows: labels severity and product, drops the ones below a score."""
     tags: ClassVar[tuple[str, ...]] = ("signal",)  # what it is for
+    icon: ClassVar[str] = "bi-bug"  # CVE
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
