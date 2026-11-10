@@ -167,7 +167,8 @@ class IndexIn(BaseModel):
     limit: int = Field(default=50, ge=1, le=5000)
     offset: int = Field(default=0, ge=0, description="Skip this many of the matching, newest first. Ignored when ``after`` is given.")
     after: str | None = Field(default=None, description="Where the last page ended (its ``next``): the rows come after it. For walking the whole store.")
-    view: Literal["all", "inbox", "starred", "archive", "discarded", "new"] = "all"
+    view: Literal["all", "inbox", "starred", "archive", "discarded", "new", "sent"] = "all"
+    own: list[str] = Field(default_factory=list, max_length=64, description="The owner's own addresses: mail from one of them is sent mail. It is left out of every list but ``sent``, and shown there.")
     folder: str | None = Field(default=None, description="Filed in this folder or below it (dotted: ASF.infra).")
     exact: bool = Field(default=False, description="With ``folder``: only that folder, not the folders below it.")
     tag: str | None = Field(default=None, description="Carries this label (a Sieve or Filters label).")
@@ -208,7 +209,15 @@ _VIEWS = {
     "archive": f"(COALESCE({_eff('mail.archived')}, '') = 'true' AND NOT {_GONE})",
     "discarded": _GONE,
     "new": f"(NOT {_GONE} AND COALESCE({_eff('mail.archived')}, '') <> 'true' AND m.is_read = 0)",  # every unread, in any folder: what is left to address
+    "sent": f"(NOT {_GONE})",  # with ``own``: what the owner wrote
 }
+
+
+def _sent(own: list[str]) -> tuple[str, list[str]]:
+    """The test for mail the owner sent: from one of their own addresses. shortcut: by sender, since a sync does not say which mail went out; mail you
+    send to yourself counts as sent. Nothing when no address is given, so a caller that does not know them sees all mail."""
+    mine = sorted({a.strip().lower() for a in own if a.strip()})
+    return (f"LOWER(m.from_addr) IN ({','.join('?' * len(mine))})", mine) if mine else ("0", [])
 
 
 def _like(text: str) -> str:
@@ -218,6 +227,9 @@ def _like(text: str) -> str:
 def _where(inp: IndexIn) -> tuple[str, list[Any]]:
     """The WHERE for a view and its filters. Only fixed fragments and bound values: nothing from the caller is put into the SQL text."""
     parts, args = [_VIEWS[inp.view]], []
+    sent, mine = _sent(inp.own)
+    parts.append(sent if inp.view == "sent" else f"NOT ({sent})")  # sent mail shows in its own view and nowhere else
+    args += mine
     if inp.folder:
         if inp.exact:
             parts.append(f"(NOT {_GONE} AND {_eff('mail.folder')} = ?)")
@@ -235,6 +247,10 @@ def _where(inp: IndexIn) -> tuple[str, list[Any]]:
 
 
 _SORT = "COALESCE(m.sent_at, m.created_at)"
+
+
+class CountsIn(BaseModel):
+    own: list[str] = Field(default_factory=list, max_length=64, description="The owner's own addresses: their mail is sent mail and is not counted.")
 
 
 class CountsOut(BaseModel):
@@ -259,7 +275,7 @@ class MailIngestor(BaseIngestor):
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
-    version: ClassVar[str] = "0.5.0"  # 0.5.0: purge, index and counts, offset on list, mail.read and mail.discarded; 0.4.0: thread (a tree), star/archive/folder labels, an attachment's sha256; 0.3.0: get, search, mark_read, mark_unread, headers, read state, the intake key
+    version: ClassVar[str] = "0.6.0"  # 0.6.0: index and counts take ``own`` (the owner's addresses) and a ``sent`` view; 0.5.0: purge, index and counts, offset on list, mail.read and mail.discarded; 0.4.0: thread (a tree), star/archive/folder labels, an attachment's sha256; 0.3.0: get, search, mark_read, mark_unread, headers, read state, the intake key
     migrations_dir: ClassVar[Path | None] = Path(__file__).parent / "migrations"
     setup_help = ('Replaces the built-in items ingestor. Items must come in as mail: set `format = "rfc822"` where they are submitted. '
                   "A message already stored (same Message-ID) is not stored again; anything that is not mail is held in Intake's failed jobs.")
@@ -381,22 +397,23 @@ class MailIngestor(BaseIngestor):
         return IndexOut(total=total, rows=rows, next=f"{rows[-1].sort_at}|{rows[-1].subject_id}" if len(rows) == inp.limit else None)
 
     @command("counts", "What a sidebar shows: unread in Inbox, Starred, Archive and Discarded, and every folder and tag with how many and how many unread.",
-             input=Empty, output=CountsOut, mcp="never")
-    async def counts(self, ctx: PluginOpContext, inp: Empty) -> CountsOut:
+             input=CountsIn, output=CountsOut, mcp="never")
+    async def counts(self, ctx: PluginOpContext, inp: CountsIn) -> CountsOut:
         db = self.ctx.db
         assert db is not None
         sys_counts: dict[str, int] = {}
         folders: dict[str, list[int]] = {}
         tags: dict[str, list[int]] = {}
         async with db.reading() as conn:
+            sent, mine = _sent(inp.own)
             for view in ("inbox", "starred", "archive", "discarded", "new"):
-                async with conn.execute(f"SELECT COUNT(*) FROM mail_messages m WHERE m.is_read = 0 AND {_VIEWS[view]}") as cur:
+                async with conn.execute(f"SELECT COUNT(*) FROM mail_messages m WHERE m.is_read = 0 AND {_VIEWS[view]} AND NOT ({sent})", mine) as cur:
                     sys_counts[view] = int((await cur.fetchone())[0])  # type: ignore[index]
             # only messages that carry the label are visited: the filed ones, not the whole store
             sql = ("SELECT m.is_read, {f}, {t1}, {t2} FROM mail_messages m WHERE NOT {gone} AND m.subject_id IN "
-                   "(SELECT subject_id FROM labels WHERE key IN ('mail.folder', 'sieve.labels', 'filters.labels'))").format(
-                f=_eff("mail.folder"), t1=_eff("sieve.labels"), t2=_eff("filters.labels"), gone=_GONE)
-            async with conn.execute(sql) as cur:
+                   "(SELECT subject_id FROM labels WHERE key IN ('mail.folder', 'sieve.labels', 'filters.labels')) AND NOT ({sent})").format(
+                f=_eff("mail.folder"), t1=_eff("sieve.labels"), t2=_eff("filters.labels"), gone=_GONE, sent=sent)
+            async with conn.execute(sql, mine) as cur:
                 async for is_read, folder, t1, t2 in cur:
                     unread = 0 if is_read else 1
                     parts = (folder or "").split(".") if folder else []
