@@ -176,6 +176,10 @@ class SieveTriager(BaseTriager):
             values = list(dict.fromkeys(e.value for e in result.of(kind)))  # type: ignore[arg-type]
             if values:
                 out[key] = ", ".join(values)
+                if key == FLAGS.key and any(v.casefold() == "\\seen" for v in values):
+                    out["mail.read"] = "true"  # \Seen means read: the mail ingestor stores a mail.read=true message already read
+                if key == FLAGS.key and any(v.casefold() == "\\flagged" for v in values):
+                    out["mail.starred"] = "true"  # \Flagged means starred
         if place := result.of("location"):
             out["mail.folder"] = self._folder(place[-1].value)  # a message lives in one folder: the last place a script put it
         if result.errors:

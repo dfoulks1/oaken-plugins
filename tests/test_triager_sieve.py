@@ -91,7 +91,22 @@ async def test_a_script_files_and_flags_a_message_and_a_message_it_does_not_touc
     await send(core, PLAIN)
     got = await labels_of(core, "l1@x.test")
     assert got["sieve.disposition"] == "filed" and got["mail.folder"] == "Lists" and got["sieve.flags"] == "\\Flagged"
+    assert got["mail.starred"] == "true"  # \Flagged asks for a star, recorded as the ingestor's own label too
     assert not any(k.startswith("sieve.") for k in await labels_of(core, "p1@x.test"))  # no script touched it: left alone
+
+
+async def row_of(core: Core, message_id: str) -> Any:
+    out = (await core.client.call("mail.list", {}, CLI)).output
+    (row,) = [m for m in out.messages if message_id in m.thread_id]  # type: ignore[union-attr]
+    return row
+
+
+async def test_a_script_that_sets_seen_stores_the_message_read(core: Core) -> None:
+    await save(core, 'require ["imap4flags"]; if header :contains "to" "me@x.test" { addflag "\\\\Seen"; }')
+    await send(core, PLAIN)
+    got = await labels_of(core, "p1@x.test")
+    assert got["mail.read"] == "true" and "\\Seen" in got["sieve.flags"]  # \Seen asks for read, recorded as the ingestor's own label too
+    assert (await row_of(core, "p1@x.test")).is_read  # and the message is stored already read, not just labelled
 
 
 async def test_discard_stores_and_labels_by_default_and_rejects_when_you_say_so(tmp_path: Path) -> None:
