@@ -95,3 +95,8 @@ LIMIT ?;
 -- name: DeleteMessage :exec
 -- Purge one message for good (the owner emptied Discarded). Its attachment rows go with DeleteAttachmentsForMessage.
 DELETE FROM mail_messages WHERE subject_id = ?;
+
+-- name: GetSourcesBySubjects :many
+-- Where each of these messages came from and the key its provider knows it by: what a bulk mark needs to write
+-- back, in one read instead of a get per message. An id that is not stored returns no row.
+SELECT subject_id, source, item_key FROM mail_messages WHERE subject_id IN (sqlc.slice('ids'));

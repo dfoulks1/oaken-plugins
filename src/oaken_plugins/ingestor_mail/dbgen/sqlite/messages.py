@@ -7,6 +7,7 @@ from __future__ import annotations
 
 __all__: collections.abc.Sequence[str] = (
     "GetMessageBodyRow",
+    "GetSourcesBySubjectsRow",
     "ListMessagesInThreadRow",
     "ListMessagesRow",
     "ListThreadMembersRow",
@@ -17,6 +18,7 @@ __all__: collections.abc.Sequence[str] = (
     "delete_message",
     "get_message_body",
     "get_message_id_for_dedup",
+    "get_sources_by_subjects",
     "insert_message",
     "list_header_blobs",
     "list_messages",
@@ -104,6 +106,13 @@ class ListThreadMembersRow:
     attachments: int
 
 
+@dataclasses.dataclass()
+class GetSourcesBySubjectsRow:
+    subject_id: str
+    source: str
+    item_key: str | None
+
+
 GET_MESSAGE_ID_FOR_DEDUP: typing.Final[str] = """-- name: GetMessageIdForDedup :one
 
 SELECT subject_id FROM mail_messages WHERE message_id = ?
@@ -186,6 +195,10 @@ LIMIT ?
 
 DELETE_MESSAGE: typing.Final[str] = """-- name: DeleteMessage :exec
 DELETE FROM mail_messages WHERE subject_id = ?
+"""
+
+GET_SOURCES_BY_SUBJECTS: typing.Final[str] = """-- name: GetSourcesBySubjects :many
+SELECT subject_id, source, item_key FROM mail_messages WHERE subject_id IN (/*SLICE:ids*/?)
 """
 
 
@@ -305,3 +318,11 @@ def list_thread_members(conn: aiosqlite.Connection, *, thread_id: str, limit: in
 
 async def delete_message(conn: aiosqlite.Connection, *, subject_id: str) -> None:
     await conn.execute(DELETE_MESSAGE, (subject_id,))
+
+
+def get_sources_by_subjects(conn: aiosqlite.Connection, *, ids: collections.abc.Sequence[str]) -> QueryResults[GetSourcesBySubjectsRow]:
+    def _decode_hook(row: sqlite3.Row) -> GetSourcesBySubjectsRow:
+        return GetSourcesBySubjectsRow(subject_id=row[0], source=row[1], item_key=row[2])
+
+    sql = GET_SOURCES_BY_SUBJECTS.replace("/*SLICE:ids*/?", ",".join("?" * len(ids)) or "NULL", 1)
+    return QueryResults(conn, sql, _decode_hook, *ids)

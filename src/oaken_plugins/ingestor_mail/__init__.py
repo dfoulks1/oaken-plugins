@@ -9,6 +9,9 @@ It reads parts made by the ``rfc822`` formatter (``headers``, ``text``, ``html``
 (``oaken item show``). It replaces the built-in ``items`` ingestor, which only runs while no other is installed.
 """
 
+# the `list` command method shadows the builtin; keep list[BaseLabel] annotations lazy
+from __future__ import annotations
+
 import hashlib
 import json
 import re
@@ -17,18 +20,17 @@ from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
-from pydantic import BaseModel, Field
-
 from oaken_core.clock import fmt_ts
 from oaken_core.errors import NotFound, PluginError
-from oaken_core.labels import BaseLabel
 from oaken_core.ids import SubjectId, new_subject_id
+from oaken_core.labels import BaseLabel
 from oaken_core.plugins.base import BaseIngestor, command
 from oaken_core.plugins.contracts import PluginContext, PluginOpContext, UiPage, UiSpec
+from pydantic import BaseModel, Field
 
+from oaken_plugins.ingestor_mail.queries_loader import queries_for
 from oaken_plugins.ingestor_mail.query import matches, parse
 from oaken_plugins.ingestor_mail.thread_tree import ThreadMember, build_tree, parent_ids
-from oaken_plugins.ingestor_mail.queries_loader import queries_for
 
 SCAN = 5000  # the newest messages a search looks through
 _ID = re.compile(r"<([^<>\s]+)>")
@@ -129,6 +131,9 @@ class MarkIn(BaseModel):
 
 class MarkOut(BaseModel):
     marked: int
+    found: list[str] = Field(default_factory=list, description="The subject ids asked for that are stored, and were marked.")
+    missing: list[str] = Field(default_factory=list, description="The subject ids asked for that are not stored.")
+    sources: dict[str, dict[str, str]] = Field(default_factory=dict, description="For the marked messages a provider submitted: source -> {subject id: item key}, for the write-back to it.")
 
 
 class PurgeIn(BaseModel):
@@ -463,12 +468,23 @@ class MailIngestor(BaseIngestor):
         db = self.ctx.db
         assert db is not None
         q = queries_for(db.engine).messages
+        ids = list(dict.fromkeys(inp.subject_ids))
+        rows = []
+        async with db.reading() as conn:
+            for i in range(0, len(ids), 500):  # a select-all is thousands of ids: stay under the engine's limit on parameters
+                rows += await q.get_sources_by_subjects(conn, ids=ids[i : i + 500])
+        known = {r.subject_id for r in rows}
+        sources: dict[str, dict[str, str]] = {}
+        for r in rows:
+            if r.item_key:
+                sources.setdefault(r.source, {})[r.subject_id] = r.item_key
         async with db.transaction() as tx:
-            for sid in inp.subject_ids:
+            for sid in known:
                 await q.set_read_by_subject(tx.conn, is_read=int(read), subject_id=sid)
             for key in inp.item_keys:
                 await q.set_read_by_item_key(tx.conn, is_read=int(read), item_key=key)
-        return MarkOut(marked=len(inp.subject_ids) + len(inp.item_keys))  # shortcut: counts requests, not rows changed
+        return MarkOut(marked=len(known) + len(inp.item_keys), found=[s for s in ids if s in known], missing=[s for s in ids if s not in known],
+                       sources=sources)  # shortcut: counts requests, not rows changed
 
     @command("purge", "Delete discarded messages for good: the message row, its attachment rows and its labels. Skips any that are not discarded.",
              input=PurgeIn, output=PurgeOut, permission="mutate", mcp="never")

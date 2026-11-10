@@ -158,6 +158,19 @@ async def test_search_understands_gmail_style_operators_and_the_read_state(core:
     assert (await find("is:read")).output.total == 1 and (await find("is:unread")).output.total == 1  # type: ignore[union-attr]
 
 
+async def test_mark_read_says_which_ids_it_knows_and_hands_back_the_provider_keys_in_one_call(core: Core) -> None:
+    await send(core, FIRST, format="rfc822", key="remote-1")
+    await send(core, REPLY, format="rfc822")
+    first, second = [m.subject_id for m in (await messages(core)).messages]
+    out = (await core.client.call("mail.mark_read", {"subject_ids": [first, "nope", first, second]}, CLI, confirm=True)).output
+    assert sorted(out.found) == sorted([first, second]) and out.missing == ["nope"] and out.marked == 2  # type: ignore[union-attr]  # an unknown id is told, not flipped; a repeat counts once
+    keyed = {sid: key for keys in out.sources.values() for sid, key in keys.items()}  # type: ignore[union-attr]
+    assert set(keyed.values()) <= {"remote-1"} and set(keyed) <= {first, second}  # only a message a provider submitted under a key has one to write back
+    assert (await core.client.call("mail.search", {"text": "is:unread"}, CLI)).output.total == 0  # type: ignore[union-attr]
+    again = (await core.client.call("mail.mark_unread", {"subject_ids": [first]}, CLI, confirm=True)).output
+    assert again.found == [first] and (await core.client.call("mail.search", {"text": "is:unread"}, CLI)).output.total == 1  # type: ignore[union-attr]
+
+
 async def test_the_thread_command_returns_the_tree_with_parent_and_depth(core: Core) -> None:
     await send(core, FIRST, format="rfc822")
     await send(core, REPLY, format="rfc822")
