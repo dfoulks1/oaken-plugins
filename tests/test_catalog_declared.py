@@ -2,7 +2,7 @@
 from oaken_core.plugins import catalog
 from oaken_core.plugins.contracts import PLUGIN_API_VERSION
 
-KINDS = ["triager", "action", "provider", "formatter", "ingestor", "embedder", "llm_backend", "gateway"]
+KINDS = ["triager", "enricher", "action", "provider", "formatter", "ingestor", "embedder", "llm_backend", "gateway"]
 
 
 def test_every_plugin_says_its_api_and_the_core_it_needs_in_its_source() -> None:
