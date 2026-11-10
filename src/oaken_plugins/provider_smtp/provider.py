@@ -168,7 +168,7 @@ class SmtpProvider(BaseTemplatePlugin, BaseProvider):
             if exc.code in _BAD_CREDENTIALS:
                 self._rejected = password
                 log.warning("smtp password rejected")
-                raise AuthRequired(f"smtp: the server refused the login. {self._help}") from None
+                raise AuthRequired(f"smtp: the server refused the login as {self.config.login} ({exc.code} {_text(exc)}). {self._help}") from None  # the reply never holds the password
             raise
 
     @staticmethod
