@@ -6,7 +6,8 @@
     from:noreply@bank.example -> label receipts, stop
     "unsubscribe" -newsletter-ok -> discard
 
-The query is the one mail search takes (``from:`` ``to:`` ``subject:`` ``has:attachment`` ``after:`` ``before:``, words, "phrases", ``-word``).
+The query is the one mail search takes (``from:`` ``to:`` ``subject:`` ``has:attachment`` ``after:`` ``before:``, words, "phrases", ``-word``), and ``lines:>20`` (more than 20 lines of the sender's own words: blank and quoted ``>`` lines
+do not count), which a database search cannot answer but a filter can.
 Every rule that matches applies, in order, unless one says ``stop``. Actions: ``label NAME``, ``folder PATH`` (levels with . or /: stored as the sub-label Work.Invoices), ``archive``, ``star``,
 ``read``, ``discard``, ``stop``. ``#`` starts a comment. Pure parsing and matching: no database, no I/O.
 """
@@ -43,6 +44,10 @@ class Rule:
     labels: tuple[str, ...] = ()
     folder: str | None = None
     flags: frozenset[str] = frozenset()
+    min_lines: int = 0  # ``lines:>N`` is N + 1; ``lines:N`` is N
+
+
+LINES = re.compile(r"(?:^|\s)lines:(>?)(\d{1,6})(?=\s|$)")
 
 
 def _actions(line: int, text: str) -> tuple[tuple[str, ...], str | None, frozenset[str]]:
@@ -78,12 +83,17 @@ def parse_rules(text: str) -> list[Rule]:
         query_text, actions = line.rsplit(" -> ", 1)
         if not query_text.strip():
             raise FilterError(n, "the query is empty")
+        want = LINES.search(query_text)
+        min_lines = int(want.group(2)) + (1 if want and want.group(1) else 0) if want else 0
+        query_text = LINES.sub(" ", query_text).strip()
+        if not query_text and not min_lines:
+            raise FilterError(n, "the query is empty")
         try:
             q = parse(query_text)
         except InvalidInput as exc:
             raise FilterError(n, exc.message) from None
         labels, folder, flags = _actions(n, actions)
-        rules.append(Rule(n, query_text.strip(), q, labels, folder, flags))
+        rules.append(Rule(n, query_text.strip(), q, labels, folder, flags, min_lines))
         if len(rules) > MAX_RULES:
             raise FilterError(n, f"more than {MAX_RULES} rules")
     return rules
@@ -99,6 +109,7 @@ class MailView:
     text: str
     attachment: bool
     sent: str | None  # YYYY-MM-DD
+    lines: int = 0  # the sender's own lines: not blank, not quoted
 
 
 def view_of(parts: Mapping[str, Any], text: str) -> MailView:
@@ -110,7 +121,8 @@ def view_of(parts: Mapping[str, Any], text: str) -> MailView:
         sent = None
     recipients = " ".join(a for _, a in getaddresses(headers.get("to", []) + headers.get("cc", [])) if a)
     return MailView(first("from").lower(), recipients.lower(), first("subject").lower(), text.lower(),
-                    any(name.startswith("attachment-") for name in parts), sent)  # fmt: skip
+                    any(name.startswith("attachment-") for name in parts), sent,
+                    sum(1 for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith(">")))  # fmt: skip
 
 
 def matches(q: Query, v: MailView) -> bool:
@@ -137,7 +149,7 @@ class Outcome:
 def apply(rules: list[Rule], v: MailView) -> Outcome:
     out = Outcome()
     for r in rules:
-        if not matches(r.query, v):
+        if v.lines < r.min_lines or not matches(r.query, v):
             continue
         out.matched.append(r.line)
         out.labels += [x for x in r.labels if x not in out.labels]

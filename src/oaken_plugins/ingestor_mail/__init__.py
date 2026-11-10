@@ -167,8 +167,9 @@ class IndexIn(BaseModel):
     limit: int = Field(default=50, ge=1, le=5000)
     offset: int = Field(default=0, ge=0, description="Skip this many of the matching, newest first. Ignored when ``after`` is given.")
     after: str | None = Field(default=None, description="Where the last page ended (its ``next``): the rows come after it. For walking the whole store.")
-    view: Literal["all", "inbox", "starred", "archive", "discarded"] = "all"
+    view: Literal["all", "inbox", "starred", "archive", "discarded", "new"] = "all"
     folder: str | None = Field(default=None, description="Filed in this folder or below it (dotted: ASF.infra).")
+    exact: bool = Field(default=False, description="With ``folder``: only that folder, not the folders below it.")
     tag: str | None = Field(default=None, description="Carries this label (a Sieve or Filters label).")
     unread: bool | None = None
 
@@ -206,6 +207,7 @@ _VIEWS = {
     "starred": f"(COALESCE({_eff('mail.starred')}, '') = 'true' AND NOT {_GONE})",
     "archive": f"(COALESCE({_eff('mail.archived')}, '') = 'true' AND NOT {_GONE})",
     "discarded": _GONE,
+    "new": f"(NOT {_GONE} AND COALESCE({_eff('mail.archived')}, '') <> 'true' AND m.is_read = 0)",  # every unread, in any folder: what is left to address
 }
 
 
@@ -217,8 +219,12 @@ def _where(inp: IndexIn) -> tuple[str, list[Any]]:
     """The WHERE for a view and its filters. Only fixed fragments and bound values: nothing from the caller is put into the SQL text."""
     parts, args = [_VIEWS[inp.view]], []
     if inp.folder:
-        parts.append(f"(NOT {_GONE} AND ({_eff('mail.folder')} = ? OR {_eff('mail.folder')} LIKE ? ESCAPE '\\'))")
-        args += [inp.folder, _like(inp.folder) + ".%"]
+        if inp.exact:
+            parts.append(f"(NOT {_GONE} AND {_eff('mail.folder')} = ?)")
+            args.append(inp.folder)
+        else:
+            parts.append(f"(NOT {_GONE} AND ({_eff('mail.folder')} = ? OR {_eff('mail.folder')} LIKE ? ESCAPE '\\'))")
+            args += [inp.folder, _like(inp.folder) + ".%"]
     if inp.tag:
         like = "%, " + _like(inp.tag) + ", %"
         parts.append(f"(NOT {_GONE} AND ((', ' || COALESCE({_eff('sieve.labels')}, '') || ', ') LIKE ? ESCAPE '\\' OR (', ' || COALESCE({_eff('filters.labels')}, '') || ', ') LIKE ? ESCAPE '\\'))")
@@ -236,6 +242,7 @@ class CountsOut(BaseModel):
     starred: int
     archive: int
     discarded: int
+    new: int
     folders: dict[str, list[int]]  # dotted path -> [messages, unread], each folder counting the folders under it
     tags: dict[str, list[int]]  # label -> [messages, unread]
 
@@ -382,7 +389,7 @@ class MailIngestor(BaseIngestor):
         folders: dict[str, list[int]] = {}
         tags: dict[str, list[int]] = {}
         async with db.reading() as conn:
-            for view in ("inbox", "starred", "archive", "discarded"):
+            for view in ("inbox", "starred", "archive", "discarded", "new"):
                 async with conn.execute(f"SELECT COUNT(*) FROM mail_messages m WHERE m.is_read = 0 AND {_VIEWS[view]}") as cur:
                     sys_counts[view] = int((await cur.fetchone())[0])  # type: ignore[index]
             # only messages that carry the label are visited: the filed ones, not the whole store

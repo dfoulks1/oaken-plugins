@@ -49,3 +49,10 @@ def test_sieve_folder_names_become_mail_folder_paths() -> None:
     t.config = SimpleNamespace(folder_separator=".")  # type: ignore[assignment]
     assert t._folder("INBOX.ASF.infra.notifications") == "ASF.infra.notifications"
     assert t._folder("Lists") == "Lists" and t._folder("INBOX") == "Inbox"
+
+
+def test_lines_counts_the_senders_own_lines():
+    rules = parse_rules("lines:>2 -> label long")
+    assert apply(rules, MailView("a", "b", "c", "d", False, None, lines=3)).labels == ["long"]
+    assert not apply(rules, MailView("a", "b", "c", "d", False, None, lines=2)).labels
+    assert not apply(parse_rules("lines:2 from:x -> star"), MailView("x", "b", "c", "d", False, None, lines=1)).matched
