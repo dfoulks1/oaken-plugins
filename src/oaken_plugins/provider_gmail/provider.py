@@ -222,6 +222,7 @@ class AuthOut(BaseModel):
 class CheckOut(BaseModel):
     ok: bool
     detail: str
+    address: str = ""  # the mailbox's own address, from Gmail's profile
 
 
 class GmailProvider(MailProvider, BaseTemplatePlugin, BaseProvider):
@@ -379,10 +380,10 @@ class GmailProvider(MailProvider, BaseTemplatePlugin, BaseProvider):
     @command("check", "Does the stored sign-in work? Asks Gmail for this account's profile.", input=Empty, output=CheckOut)
     async def _cmd_check(self, ctx: PluginOpContext, inp: Empty) -> CheckOut:
         try:
-            await self.authenticate(self.ctx)
+            profile = await self.authenticate(self.ctx)
         except OakenError as exc:
             return CheckOut(ok=False, detail=exc.message)
-        return CheckOut(ok=True, detail=f"{self.config.account} is signed in")
+        return CheckOut(ok=True, detail=f"{self.config.account} is signed in", address=str((profile or {}).get("emailAddress", "")))
 
     async def _preview_auth(self, ctx: PluginOpContext, inp: Empty) -> PluginPreview:
         return PluginPreview(f"Start signing {self.config.account!r} in to Google: opens a local listener and keeps the refresh token in the keyring", (), 0)
@@ -432,9 +433,9 @@ class GmailProvider(MailProvider, BaseTemplatePlugin, BaseProvider):
             body = {"ids": ids[i : i + 1000], "removeLabelIds" if read else "addLabelIds": [UNREAD]}
             await self.api.request("POST", "/messages/batchModify", json=body, safe_to_retry=False)
 
-    async def authenticate(self, ctx: PluginContext) -> None:
-        """Check that a stored token works and carries the right scope (no browser)."""
-        await self.api.request("GET", "/profile")
+    async def authenticate(self, ctx: PluginContext) -> Any:
+        """Check that a stored token works and carries the right scope (no browser). Returns Gmail's profile."""
+        return await self.api.request("GET", "/profile")
 
     async def authorize(self, show_url: Callable[[str], None]) -> None:
         """The interactive step: open ``show_url``'s address in a browser, wait for Google to
