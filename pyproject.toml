@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "oaken-core>=1.0.0,<2",
+    "oaken-core>=1.0.1,<2",  # 1.0.1 has the operations, icons and enricher when/unless these plugins use
 ]
 
 # A plugin whose library is heavy or rarely wanted asks for it as an extra: `pip install oaken-plugins[imap]`. The plugin imports the
