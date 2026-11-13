@@ -25,7 +25,7 @@ class OllamaLLM(BaseLLMBackend):
     it lists the models it has, so a settings dialog can offer them in a dropdown. The model is the instance's ``model`` setting.
     Who may send it what is the router's call, from the instance's ``locality`` (unset means hosted, the strictest)."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
-    version: ClassVar[str] = "0.1.0"
+    version: ClassVar[str] = "0.1.1"  # 0.1.1: says whether base_url is another machine (off_machine)
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
@@ -42,7 +42,7 @@ class OllamaLLM(BaseLLMBackend):
     async def start(self, ctx: PluginContext) -> None:
         await super().start(ctx)
         cfg = self.config  # parsed by BasePlugin from config_model
-        check_url(cfg.base_url, ctx.name)
+        self.off_machine = not check_url(cfg.base_url, ctx.name)  # the router never takes another machine as `local`
         self._default = cfg.model  # an optional default; the backend works without one
         self.model_id = cfg.model or "ollama"  # core's contract wants an id: with no default it names the backend, and no call ever runs it
         self.context_window = DEFAULT_CONTEXT  # shortcut: Ollama's own default window, for a backend that knows no model; core asks for one number

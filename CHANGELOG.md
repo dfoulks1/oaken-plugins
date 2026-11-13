@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Ollama** (`llm_backend.ollama`, `llm_backend.ollama-remote`, `embedder.ollama` 0.1.1): each says, once started, whether its `base_url` is
+  another machine (`off_machine`). With oaken-core's router check, an instance typed `locality = "local"` that points at another box is treated as
+  hosted, so a confidential item cannot reach it by a typo. Loopback means `localhost`, `127.0.0.0/8` and `::1`; any other host name counts
+  as another machine.
+
 ## 1.0.0 (alpha)
 
 The first release of oaken-plugins, for oaken-core 1.0 (`requires_core = ">=1.0.0,<2"`). Each plugin is at its own version, `0.1.0`.

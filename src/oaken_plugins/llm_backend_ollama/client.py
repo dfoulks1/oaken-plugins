@@ -65,7 +65,8 @@ def is_loopback(url: str) -> bool:
 
 def check_url(url: str, who: str) -> bool:
     """Refuse a URL that is not http(s); return whether the host is loopback. Who may send what to a
-    non-loopback host is the router's call (``locality``), not the plugin's."""
+    non-loopback host is the router's call (``locality``), not the plugin's; the plugins report a
+    non-loopback host as ``off_machine`` so the router never takes it as ``local``."""
     if urlsplit(url).scheme not in {"http", "https"} or not urlsplit(url).hostname:
         raise PluginError(f"{who}: base_url must be an http(s) URL, got {url!r}")
     return is_loopback(url)
