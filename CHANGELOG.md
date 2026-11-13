@@ -16,4 +16,7 @@ The first release of oaken-plugins, for oaken-core 1.0.1 or later in 1.x (`requi
 - **Filters:** `lines:>N` matches mail by the sender's own lines (blank and quoted lines do not count), so a filter can label long human mail.
 - **Mail:** a `new` view (every unread message, in any folder) and an `exact` folder match; `mark_read` answers which ids it knows and hands back
   the provider keys. Sieve `\Seen` stores the message read and `\Flagged` stars it.
-- **Actions and icons:** `action_exec`; every plugin picks an icon.
+- **Actions and icons:** `action_exec`; every plugin picks an icon. A program `action_exec` started is stopped if its job is cancelled.
+- **Python:** 3.12 or later (the mail ingestor's generated queries need it).
+- **Ollama:** the backend and the embedder say when their `base_url` is another machine (`off_machine`), so the router never takes them as `local`;
+  `num_thread` caps the CPU threads Ollama uses per call.
