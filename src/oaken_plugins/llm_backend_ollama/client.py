@@ -13,10 +13,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx2
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
-
 from oaken_core.errors import AIBackendError, PluginError
 from oaken_core.logging import get_logger
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 log = get_logger("oaken_plugins.ollama")
 
@@ -35,6 +34,9 @@ class OllamaConfig(BaseModel):
     max_retries: int = Field(default=2, ge=0, le=10)  # extra tries after a connection error / 5xx
     backoff: float = Field(default=0.5, ge=0)  # seconds, doubled each retry
     batch_size: int = Field(default=32, ge=1, le=1024)  # texts per /api/embed call
+    # CPU threads Ollama may use per call. Unset, Ollama takes every physical core, which is fastest
+    # and leaves a laptop with nothing to spare; half the cores costs about a fifth of the speed.
+    num_thread: int | None = Field(default=None, ge=1, le=256)
     # Override whether a reasoning model thinks before it answers. Unset, each request decides, and
     # Oaken's tasks ask for no reasoning (a short JSON answer; reasoning costs time and can use up
     # the output limit before the answer is written). true turns it on for every call.
@@ -153,7 +155,8 @@ class OllamaClient:
             data = await self._call(
                 "POST",
                 "/api/embed",
-                {"model": name, "input": batch, "keep_alive": self.config.keep_alive},
+                {"model": name, "input": batch, "keep_alive": self.config.keep_alive}
+                | ({"options": {"num_thread": self.config.num_thread}} if self.config.num_thread else {}),
             )
             vectors = data.get("embeddings")
             if not isinstance(vectors, list) or len(vectors) != len(batch):
@@ -175,6 +178,8 @@ class OllamaClient:
         options: dict[str, Any] = {"temperature": temperature}
         if max_tokens:
             options["num_predict"] = max_tokens
+        if self.config.num_thread:
+            options["num_thread"] = self.config.num_thread
         body: dict[str, Any] = {
             "model": name,
             "messages": [

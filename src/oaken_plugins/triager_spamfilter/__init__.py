@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Scores incoming mail for junk, deterministically, and labels the result
+"""Scores incoming mail for junk, deterministically
 
 A mail-only triager in the spirit of ``rules``: no model, the same mail always scores the same. Built-in checks (an upstream spam flag, failed
 SPF/DKIM/DMARC, a missing From or Message-ID, a Reply-To on another site, a display name that spoofs an address, a shouting subject) each add a
@@ -22,7 +22,13 @@ from oaken_core.plugins.base import BaseTriager, command
 from oaken_core.plugins.contracts import PluginOpContext, UiField, UiPage, UiSpec
 from pydantic import BaseModel, Field
 
-from oaken_plugins.triager_spamfilter.checks import CHECKS, DESCRIPTIONS, WEIGHTS, Mail, mail_of
+from oaken_plugins.triager_spamfilter.checks import (
+    CHECKS,
+    DESCRIPTIONS,
+    WEIGHTS,
+    Mail,
+    mail_of,
+)
 from oaken_plugins.triager_spamfilter.config import SpamFilterConfig
 
 VERDICT = BaseLabel.new("spamfilter.verdict", "What the spam filter made of the message", ("allowed", "suspect", "junk"))

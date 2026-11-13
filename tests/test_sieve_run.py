@@ -2,7 +2,6 @@
 """What each test, action and extension does, on one fixed message (see ``sieve_helpers``)."""
 
 import pytest
-
 from sieve_helpers import MAIL, flags, go, labels, locations
 
 REQ = (
@@ -121,6 +120,7 @@ def test_body_looks_at_text_not_headers() -> None:
 
 
 def test_body_uses_html_text_when_there_is_no_plain_part() -> None:
+    pytest.importorskip("selectolax")  # the `clean` extra turns HTML into text
     raw = (
         b"From: a@example.com\r\nSubject: x\r\nContent-Type: text/html\r\n\r\n"
         b"<html><body><p>Big <b>sale</b> today</p></body></html>"

@@ -159,10 +159,6 @@ def _rows(rows: Any) -> list[MessageRow]:
                        is_read=bool(r.is_read), attachments=int(r.attachments)) for r in rows]
 
 
-# The labels a client that keeps its own index needs, with each message, to sort it into Inbox, Starred, Archive, Discarded, folders and tags.
-INDEX_KEYS = ("mail.starred", "mail.archived", "mail.discarded", "mail.folder", "sieve.disposition", "sieve.labels", "filters.labels")
-
-
 class IndexIn(BaseModel):
     limit: int = Field(default=50, ge=1, le=5000)
     offset: int = Field(default=0, ge=0, description="Skip this many of the matching, newest first. Ignored when ``after`` is given.")

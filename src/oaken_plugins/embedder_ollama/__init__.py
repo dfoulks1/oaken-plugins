@@ -8,11 +8,16 @@ from collections.abc import Sequence
 from typing import Any, ClassVar
 
 import httpx2
-
 from oaken_core.errors import PluginError
-from oaken_plugins.llm_backend_ollama.client import OllamaClient, OllamaConfig, check_url, installed_models
 from oaken_core.plugins.base import BaseEmbedder
 from oaken_core.plugins.contracts import Health, PluginContext
+
+from oaken_plugins.llm_backend_ollama.client import (
+    OllamaClient,
+    OllamaConfig,
+    check_url,
+    installed_models,
+)
 
 
 class OllamaEmbedder(BaseEmbedder):
@@ -39,7 +44,7 @@ class OllamaEmbedder(BaseEmbedder):
     async def start(self, ctx: PluginContext) -> None:
         await super().start(ctx)
         cfg = self.config  # parsed by BasePlugin from config_model
-        check_url(cfg.base_url, ctx.name)
+        self.off_machine = not check_url(cfg.base_url, ctx.name)  # the router never takes a plugin that leaves this machine as `local`, whatever its table says
         self.model_id = cfg.model
         self._client = OllamaClient(cfg, ctx.name, transport=self._transport)
         try:

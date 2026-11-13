@@ -10,7 +10,6 @@ from typing import Any
 
 import httpx2
 import pytest
-
 from oaken_core.clock import FakeClock
 from oaken_core.daemon.core import Core
 from oaken_core.errors import InvalidInput
@@ -19,6 +18,7 @@ from oaken_core.plugins.host import PluginTables
 from oaken_core.plugins.ui import check_ui
 from oaken_core.settings import Settings
 from oaken_core.store import SqliteStore
+
 from oaken_plugins.formatter_rfc822 import Rfc822Formatter
 from oaken_plugins.ingestor_mail import MailIngestor
 from oaken_plugins.triager_sieve import SieveTriager
@@ -173,6 +173,6 @@ async def test_sieve_is_a_tab_of_the_pipeline_page_with_an_editor(core: Core) ->
     async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=core.console), base_url=f"http://127.0.0.1:{PORT}") as http:
         page = (await http.get("/pipeline")).text
         bar = re.findall(r">([A-Za-z]+)</a>", page[page.index('aria-label="Pipeline"'):page.index("</nav>", page.index('aria-label="Pipeline"'))])
-        assert bar == ["Providers", "Labels", "Sieve", "Schedules", "Analyzers", "Machinery"]  # between Labels and Schedules
+        assert bar == ["Providers", "Labels", "Sieve", "Schedules", "Analyzers", "Headers", "Machinery"]  # between Labels and Schedules (Headers is the mail ingestor's tab)
         editor = (await http.get("/plugins/triager/sieve/pages/scripts")).text
         assert 'aria-current="page">Sieve</a>' in editor and "<textarea" in editor and "fileinto" in editor  # the script is in the box

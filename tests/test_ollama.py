@@ -7,17 +7,22 @@ from typing import Any
 
 import httpx2
 import pytest
-
 from oaken_core.errors import AIBackendError, PluginError
+from oaken_core.plugins.contracts import LLMRequest
+from oaken_core.testing.contracts import (
+    EmbedderContract,
+    LLMContract,
+    make_context,
+    verify_embedder,
+    verify_llm,
+)
+from oaken_core.untrusted import UntrustedText
+from ollama_fake import DIMS, FakeOllama
+
 from oaken_plugins.embedder_ollama import OllamaEmbedder
 from oaken_plugins.llm_backend_ollama import OllamaLLM
 from oaken_plugins.llm_backend_ollama.client import is_loopback
 from oaken_plugins.llm_backend_ollama_remote import OllamaRemoteLLM
-from oaken_core.plugins.contracts import LLMRequest
-from oaken_core.testing.contracts import EmbedderContract, LLMContract, make_context, verify_embedder, verify_llm
-from oaken_core.untrusted import UntrustedText
-
-from ollama_fake import DIMS, FakeOllama
 
 MODEL = {"model": "nomic-embed-text", "backoff": 0}
 
@@ -93,6 +98,22 @@ async def test_keep_alive_is_configurable(ollama: FakeOllama) -> None:
     emb = await started(ollama, keep_alive="30s")
     await emb.embed(["x"])
     assert ollama.bodies("/api/embed")[-1]["keep_alive"] == "30s"
+
+
+async def test_a_plugin_says_when_its_address_is_another_machine_so_the_router_never_takes_it_as_local(ollama: FakeOllama) -> None:
+    assert (await started(ollama)).off_machine is False and (await started_llm(ollama)).off_machine is False  # the default address is this machine
+    assert (await started(ollama, base_url="http://gpu-box:11434")).off_machine is True
+    assert (await started_llm(ollama, {"base_url": "http://192.168.1.20:11434"})).off_machine is True
+    assert (await started_llm(ollama, {"base_url": "http://[::1]:11434"})).off_machine is False
+
+
+async def test_num_thread_caps_ollamas_threads_on_chat_and_embed(ollama: FakeOllama) -> None:
+    emb = await started(ollama, num_thread=4)
+    await emb.embed(["x"])
+    assert ollama.bodies("/api/embed")[-1]["options"] == {"num_thread": 4}
+    llm = await started_llm(ollama, {"num_thread": 4})
+    await llm.generate(LLMRequest("s", ("Go.",)))
+    assert ollama.bodies("/api/chat")[-1]["options"]["num_thread"] == 4
 
 
 async def test_a_wrong_number_of_vectors_is_an_error(ollama: FakeOllama) -> None:

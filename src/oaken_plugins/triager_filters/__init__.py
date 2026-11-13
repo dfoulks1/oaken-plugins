@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Filters: rules written in the search syntax, applied to mail as it arrives
+"""Rules in the search syntax, applied to mail as it arrives
 
 One rule per line, ``QUERY -> ACTION, ACTION``, in files named ``*.filters`` in this plugin's folder (run in name order). The query is the one
 mail search takes, so a filter reads like a search you already know:
@@ -20,17 +20,29 @@ import re
 from pathlib import Path
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict
-
 from oaken_core import paths
 from oaken_core.errors import InvalidInput, NotFound
 from oaken_core.intake import Verdict
 from oaken_core.labels import BaseLabel
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseTriager, command
-from oaken_core.plugins.contracts import PluginOpContext, PluginPreview, UiField, UiPage, UiSpec
+from oaken_core.plugins.contracts import (
+    PluginOpContext,
+    PluginPreview,
+    UiField,
+    UiPage,
+    UiSpec,
+)
+from pydantic import BaseModel, ConfigDict
+
 from oaken_plugins.formatter_rfc822.htmltext import html_to_text
-from oaken_plugins.triager_filters.rules import FilterError, Rule, apply, parse_rules, view_of
+from oaken_plugins.triager_filters.rules import (
+    FilterError,
+    Rule,
+    apply,
+    parse_rules,
+    view_of,
+)
 
 log = get_logger("oaken_plugins.filters")
 

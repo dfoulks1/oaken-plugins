@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Runs a program on a message when a route fires; its exit status is the result
+"""Runs a program on a message when a route fires
 
 A template: make an instance for each program (the + on a stage's page). Give it the ``routes`` it answers (the names a triager puts
 on a verdict) and a ``command``. When a message is routed here the program is started and the message is written to its
@@ -61,7 +61,7 @@ def payload(target: ActionTarget) -> bytes:
 
 
 class ExecAction(BaseTemplatePlugin, BaseAction):
-    """Runs a program on a message when a route fires; its exit status is the result
+    """Runs a program on a message when a route fires
 
     A program as an end result: the message goes to it on stdin, and success is exit 0."""
     tags: ClassVar[tuple[str, ...]] = ("generic",)  # what it is for
@@ -103,9 +103,11 @@ class ExecAction(BaseTemplatePlugin, BaseAction):
         try:
             out, _ = await asyncio.wait_for(proc.communicate(payload(target)), self.config.timeout)
         except TimeoutError:
-            proc.kill()
-            await proc.wait()
             return ActionResult(False, f"timed out after {self.config.timeout}s")
+        finally:  # timed out, or the job itself was cancelled (core stopping, its own timeout): the program does not outlive the action
+            if proc.returncode is None:
+                proc.kill()
+                await proc.wait()
         if proc.returncode:
             return ActionResult(False, f"exited {proc.returncode}")
         try:

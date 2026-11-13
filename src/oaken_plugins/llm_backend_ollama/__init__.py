@@ -8,12 +8,16 @@ import json
 from typing import Any, ClassVar
 
 import httpx2
-
 from oaken_core.errors import OakenError, PluginError
-from oaken_plugins.llm_backend_ollama.client import OllamaClient, OllamaConfig, check_url, installed_models
 from oaken_core.plugins.base import BaseLLMBackend
 from oaken_core.plugins.contracts import Health, LLMRequest, LLMResponse, PluginContext
 
+from oaken_plugins.llm_backend_ollama.client import (
+    OllamaClient,
+    OllamaConfig,
+    check_url,
+    installed_models,
+)
 
 DEFAULT_CONTEXT = 4096
 
@@ -43,7 +47,7 @@ class OllamaLLM(BaseLLMBackend):
     async def start(self, ctx: PluginContext) -> None:
         await super().start(ctx)
         cfg = self.config  # parsed by BasePlugin from config_model
-        check_url(cfg.base_url, ctx.name)
+        self.off_machine = not check_url(cfg.base_url, ctx.name)  # the router never takes a plugin that leaves this machine as `local`, whatever its table says
         self._default = cfg.model  # an optional default; the backend works without one
         self.model_id = cfg.model or "ollama"  # core's contract wants an id: with no default it names the backend, and no call ever runs it
         self.context_window = DEFAULT_CONTEXT  # shortcut: Ollama's own default window, for a backend that knows no model; core asks for one number

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Splits a CVE into its constituent parts
+"""Splits a CVE or KEV record into one part per field
 
 Stdlib ``json`` only. Anything that is not a JSON object raises, and intake keeps the item whole as one ``body`` part.
 """
@@ -34,5 +34,5 @@ class CveFormatter(BaseFormatter):
             # shortcut: hand-pasted key/value lines with one brace or none; add what is missing
             record = json.loads(("" if text.startswith("{") else "{") + text.rstrip(",") + ("" if text.endswith("}") else "}"))
         if not isinstance(record, dict):
-            raise ValueError("a CVE record is a JSON object")
+            raise ValueError("a CVE record is a JSON object")  # noqa: TRY004 - bad input, the same error json.loads gives
         return {k: Part(name=k, content_type="application/json", content=v) for k, v in record.items()}

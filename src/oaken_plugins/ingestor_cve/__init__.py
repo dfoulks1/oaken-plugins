@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Stores one record per CVE id, joining NVD rows and CISA KEV rows
+"""Stores one record per CVE id, NVD and KEV joined
 
 The ingestor decides what an item *is*: a CVE, identified by its id. An NVD row and a KEV row for the same id are the same record,
 whichever arrives first, and a repeat of either replaces that source's row. When KEV touches a record it is labelled ``exploited=kev``;
