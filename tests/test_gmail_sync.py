@@ -6,12 +6,11 @@ import json
 from typing import Any
 
 import pytest
-
-from oaken_core.errors import ProviderError, QuotaExceeded
-from oaken_plugins.provider_gmail.provider import PullBatch
-from oaken_plugins.provider_gmail import GmailFullResync
-from oaken_plugins.provider_gmail.provider import Cursor
 from gmail_fakes import FakeGoogle, Rig, make_rig
+from oaken_core.errors import ProviderError, QuotaExceeded
+
+from oaken_plugins.provider_gmail import GmailFullResync
+from oaken_plugins.provider_gmail.provider import Cursor, PullBatch
 
 
 async def pull(
@@ -92,7 +91,7 @@ async def test_mail_that_arrives_during_a_long_crawl_comes_before_the_rest_of_th
     google = FakeGoogle()
     google.fill(500)
     rig = await started(google)
-    first, cursor = await pull(rig, None, stop_after=1)
+    _, cursor = await pull(rig, None, stop_after=1)
     before = Cursor.parse(cursor)
     assert before is not None and before.page and before.since is None
     late = [google.add() for _ in range(3)]
@@ -328,6 +327,7 @@ async def test_send_posts_one_message_with_bcc_and_no_retry() -> None:
     from email import message_from_bytes
 
     from oaken_core.errors import PluginError
+
     from oaken_plugins.provider_gmail.provider import SendIn
 
     rig = await started()

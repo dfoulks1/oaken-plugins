@@ -8,9 +8,8 @@ put a real proxy in front instead.
 
 from typing import ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 from oaken_core.plugins.base import BaseFriendlyNames
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class LocalnameConfig(BaseModel):

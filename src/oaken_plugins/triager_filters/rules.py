@@ -15,11 +15,11 @@ Every rule that matches applies, in order, unless one says ``stop``. Actions: ``
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
 from email.utils import getaddresses, parsedate_to_datetime
 from typing import Any
 
 from oaken_core.errors import InvalidInput
+
 from oaken_plugins.ingestor_mail.query import Query, parse
 
 NAME = re.compile(r"^[\w][\w .+-]{0,63}$")  # a label

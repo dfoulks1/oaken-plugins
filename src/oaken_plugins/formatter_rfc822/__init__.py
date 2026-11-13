@@ -42,12 +42,12 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 from oaken_core import paths
 from oaken_core.parts import Part
 from oaken_core.plugins.base import BaseFormatter, command
 from oaken_core.plugins.contracts import PluginOpContext
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from oaken_plugins.formatter_rfc822.clean import clean_message
 from oaken_plugins.formatter_rfc822.headers import RESERVED, parse_header
 from oaken_plugins.formatter_rfc822.quarantine import store

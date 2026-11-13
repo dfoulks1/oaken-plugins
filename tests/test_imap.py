@@ -5,11 +5,9 @@ Trash and Junk, passwords, a reload, and the connection's security."""
 import ssl
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
-from pydantic import ValidationError
-
 from oaken_core.clock import FakeClock
 from oaken_core.daemon.core import Core
 from oaken_core.operations.caller import CallerContext
@@ -17,6 +15,8 @@ from oaken_core.plugins.host import PluginTables
 from oaken_core.plugins.jobs import register_plugin_jobs
 from oaken_core.settings import Settings
 from oaken_core.store import SqliteStore
+from pydantic import ValidationError
+
 from oaken_plugins.formatter_rfc822 import Rfc822Formatter
 from oaken_plugins.ingestor_mail import MailIngestor
 from oaken_plugins.provider_imap import ImapConfig, ImapProvider
@@ -194,8 +194,8 @@ def test_folder_choice_follows_the_servers_word_then_the_usual_names() -> None:
 
 # -- the connection's security: a library that is not installed is a skipped test, not a failure --------------------------------------
 class FakeClient:
-    capabilities: set[str] = set()
-    calls: list[str] = []
+    capabilities: ClassVar[set[str]] = set()
+    calls: ClassVar[list[str]] = []
 
     def __init__(self, host: str, port: int, ssl: bool, ssl_context: Any, timeout: float) -> None:
         self.ssl, self.port = ssl, port

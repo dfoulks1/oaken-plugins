@@ -8,11 +8,10 @@ the provider by the ``source`` the ingestor stored, and passes the keys the prov
 
 from collections.abc import Sequence
 
-from pydantic import BaseModel, Field
-
 from oaken_core.errors import ProviderError
 from oaken_core.plugins.base import command
 from oaken_core.plugins.contracts import PluginOpContext
+from pydantic import BaseModel, Field
 
 
 class SetReadIn(BaseModel):

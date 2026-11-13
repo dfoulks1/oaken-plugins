@@ -19,14 +19,13 @@ from oaken_core.labels import BaseLabel
 from oaken_core.plugins.base import BaseTriager
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # the label keys it writes; the sibling signal triagers define the shared ones identically
 HN_KIND = BaseLabel.new("hn_kind", "A Hacker News story or comment", ("story", "comment"))
 PRODUCT = BaseLabel.new("product", "The product or project the signal is about")
 SIGNAL = BaseLabel.new("signal", "Which daily signal this item is", ("cve", "kev", "eol", "hn"))
 
 SHAPE = {"hn_url", "type", "title_or_text"}
-_JOB_SEEKER = re.compile(r"willing to relocate|^\s*location:.*remote:", re.I | re.S)
+_JOB_SEEKER = re.compile(r"willing to relocate|^\s*location:.*remote:", re.IGNORECASE | re.DOTALL)
 
 
 class HackerNewsConfig(BaseModel):

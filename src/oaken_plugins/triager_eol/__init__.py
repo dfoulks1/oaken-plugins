@@ -15,7 +15,6 @@ from oaken_core.labels import BaseLabel
 from oaken_core.plugins.base import BaseTriager
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # the label keys it writes; the sibling signal triagers define the shared ones identically
 EOL = BaseLabel.new("eol", "How near an end-of-life date is", ("past", "soon", "later"))
 PRODUCT = BaseLabel.new("product", "The product or project the signal is about")

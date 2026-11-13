@@ -5,6 +5,7 @@ import pytest
 from oaken_core.clock import FakeClock
 from oaken_core.errors import PluginError
 from oaken_core.plugins.contracts import PluginContext
+
 from oaken_plugins.provider_exec import ExecProvider, RunIn
 
 

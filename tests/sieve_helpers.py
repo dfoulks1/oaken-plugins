@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Helpers shared by the Sieve tests, ported from oaken-mail (cf3b187). A message is split by the real rfc822 formatter and viewed as a script sees it."""
 
-from datetime import UTC, datetime
-
 import asyncio
+from datetime import UTC, datetime
 
 from oaken_plugins.formatter_rfc822 import Rfc822Formatter
 from oaken_plugins.triager_sieve.config import SieveSettings

@@ -5,7 +5,6 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-
 from gmail_fakes import Rig, make_rig
 
 

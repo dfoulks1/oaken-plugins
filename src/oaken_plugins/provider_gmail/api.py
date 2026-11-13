@@ -13,9 +13,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx2
-
 from oaken_core.errors import NotFound, ProviderError, QuotaExceeded
 from oaken_core.logging import get_logger
+
 from oaken_plugins.provider_gmail.config import API, GmailConfig
 from oaken_plugins.provider_gmail.tokens import AuthRequired, TokenManager
 

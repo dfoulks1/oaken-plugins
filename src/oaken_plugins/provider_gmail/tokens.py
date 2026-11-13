@@ -20,9 +20,9 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 import httpx2
-
 from oaken_core.errors import AuthError, PluginError, ProviderError
 from oaken_core.logging import get_logger
+
 from oaken_plugins.provider_gmail.config import TOKEN_URL
 
 log = get_logger("oaken.gmail")

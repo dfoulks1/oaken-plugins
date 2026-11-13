@@ -6,12 +6,12 @@ from pathlib import Path
 
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from sieve_helpers import MAIL, go, labels, locations, view
 
 from oaken_plugins.triager_sieve.config import SieveSettings
 from oaken_plugins.triager_sieve.interp import run
 from oaken_plugins.triager_sieve.parser import SieveError
 from oaken_plugins.triager_sieve.script import compile_script
-from sieve_helpers import MAIL, NOW, go, labels, locations, view
 
 REQ = 'require ["fileinto","regex","variables","body","imap4flags"];\n'
 

@@ -106,7 +106,7 @@ def test_the_docs_table_lists_every_check_with_its_weight() -> None:
     from oaken_plugins.triager_spamfilter.checks import WEIGHTS
 
     doc = (Path(__file__).parents[1] / "docs" / "spamfilter.md").read_text()
-    documented = {name: int(w) for name, w in re.findall(r"^\| `(\w+)` \| (\d+) \|", doc, re.M)}
+    documented = {name: int(w) for name, w in re.findall(r"^\| `(\w+)` \| (\d+) \|", doc, re.MULTILINE)}
     assert documented == WEIGHTS
     assert f"(default `{SpamFilterConfig().threshold}`)" in doc
 

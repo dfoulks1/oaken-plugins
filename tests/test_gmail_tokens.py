@@ -2,16 +2,20 @@
 """The token architecture: renew quietly, share one refresh, never loop, never leak."""
 
 import asyncio
-
-import httpx2
-import pytest
 import contextlib
 import logging
 
-from oaken_core.errors import ProviderError
-from oaken_plugins.provider_gmail import AuthRequired, GmailNeedsReauthorization, GmailProvider
-from oaken_plugins.provider_gmail.provider import GmailReauthorized
+import httpx2
+import pytest
 from gmail_fakes import REFRESH, FakeGoogle, MemoryStore, Rig, make_rig
+from oaken_core.errors import ProviderError
+
+from oaken_plugins.provider_gmail import (
+    AuthRequired,
+    GmailNeedsReauthorization,
+    GmailProvider,
+)
+from oaken_plugins.provider_gmail.provider import GmailReauthorized
 
 
 @contextlib.contextmanager

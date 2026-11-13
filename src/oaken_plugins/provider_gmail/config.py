@@ -5,9 +5,8 @@ named by ``client_secret_file`` and the refresh token lives only in the OS keyri
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
-
 from oaken_core.errors import PluginError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 API = "https://gmail.googleapis.com/gmail/v1/users/me"

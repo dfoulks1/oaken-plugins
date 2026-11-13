@@ -10,13 +10,18 @@ from urllib.parse import parse_qs, urlsplit
 import httpx2
 import keyring
 import pytest
+from gmail_fakes import CREDS, FakeGoogle, MemoryStore, make_rig
 from keyring.backend import KeyringBackend
 from keyring.backends import fail
-
 from oaken_core.errors import PluginError, ProviderError
+
 from oaken_plugins.provider_gmail import GmailConfig, GmailProvider, KeyringStore
-from oaken_plugins.provider_gmail.oauth import authorization_url, authorize, load_client, make_pkce
-from gmail_fakes import CREDS, FakeGoogle, MemoryStore, make_rig
+from oaken_plugins.provider_gmail.oauth import (
+    authorization_url,
+    authorize,
+    load_client,
+    make_pkce,
+)
 
 
 def test_pkce_challenge_is_the_sha256_of_the_verifier() -> None:

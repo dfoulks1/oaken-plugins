@@ -6,7 +6,12 @@ provides: Intake formats the messages (the `rfc822` formatter) and the `mail` in
 """
 
 from oaken_plugins.provider_gmail.config import GmailConfig
-from oaken_plugins.provider_gmail.provider import GmailFullResync, GmailNeedsReauthorization, GmailProvider, GmailReauthorized
+from oaken_plugins.provider_gmail.provider import (
+    GmailFullResync,
+    GmailNeedsReauthorization,
+    GmailProvider,
+    GmailReauthorized,
+)
 from oaken_plugins.provider_gmail.tokens import AuthRequired, KeyringStore, TokenManager
 
 __all__ = ["AuthRequired", "GmailConfig", "GmailFullResync", "GmailNeedsReauthorization", "GmailProvider", "GmailReauthorized", "KeyringStore", "TokenManager"]

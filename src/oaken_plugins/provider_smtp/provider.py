@@ -20,13 +20,13 @@ from email.policy import SMTP as SMTP_POLICY
 from email.utils import formatdate
 from typing import Any, ClassVar
 
-from pydantic import BaseModel
-
 from oaken_core import identity
 from oaken_core.errors import AuthError, OakenError, PluginError, ProviderError
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseProvider, BaseTemplatePlugin, command
 from oaken_core.plugins.contracts import Health, PluginOpContext, PluginPreview
+from pydantic import BaseModel
+
 from oaken_plugins.provider_smtp.config import SmtpConfig
 from oaken_plugins.provider_smtp.message import prepare
 
@@ -196,7 +196,7 @@ class SmtpProvider(BaseTemplatePlugin, BaseProvider):
             await self._login(smtp, password)
         except (AuthRequired, PluginError):
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - whatever the library raises becomes the plugin's own error
             raise self._failure(exc) from None
         finally:
             await self._close(smtp)
@@ -239,7 +239,7 @@ class SmtpProvider(BaseTemplatePlugin, BaseProvider):
             raise self._partial(sent.recipients, refused) from None
         except (AuthRequired, PluginError):
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - whatever the library raises becomes the plugin's own error
             raise self._failure(exc) from None
         finally:
             await self._close(smtp)

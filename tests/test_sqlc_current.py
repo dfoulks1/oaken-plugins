@@ -32,7 +32,7 @@ def test_generated_code_is_current(tmp_path: Path) -> None:
     temp_cfg = ROOT / f"sqlc.check-{tmp_path.name}.yaml"
     temp_cfg.write_text(cfg_text)
     try:
-        run = subprocess.run([SQLC, "generate", "-f", str(temp_cfg)], cwd=ROOT, capture_output=True, text=True)
+        run = subprocess.run([SQLC, "generate", "-f", str(temp_cfg)], cwd=ROOT, capture_output=True, text=True, check=False)
         assert run.returncode == 0, run.stderr
         for out, tmp in temp_outs.items():
             diff = filecmp.dircmp(ROOT / tmp, ROOT / out)

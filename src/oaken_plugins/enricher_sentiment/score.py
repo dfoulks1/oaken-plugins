@@ -17,17 +17,17 @@ HOSTILE = [
         r"\byou(?:'re| are)?\s+(?:clearly|obviously|simply|just|always|never|"
         r"don't|didn't|failed|refuse|keep|can't|cannot|completely|totally)\b"
         r"|\byou\s+(?:clearly|obviously)\b|\bare you (?:kidding|serious|"
-        r"joking)\b", re.I)),
+        r"joking)\b", re.IGNORECASE)),
     ("insult", 20, re.compile(
         r"\b(?:idiot|stupid|moron|incompetent|clueless|pathetic|lazy|"
-        r"ignorant|useless|ridiculous)\b", re.I)),
+        r"ignorant|useless|ridiculous)\b", re.IGNORECASE)),
     ("contempt", 8, re.compile(
         r"\b(?:as i (?:already )?(?:said|told|explained)|read the (?:docs|manual|"
         r"thread|code)|waste of (?:my )?time|nonsense|absurd|garbage(?![\s-]*collect)|"
-        r"for the last time|how many times|frankly|whatever)\b", re.I)),
+        r"for the last time|how many times|frankly|whatever)\b", re.IGNORECASE)),
     ("profanity", 10, re.compile(
         r"\b(?:wtf|damn|crap|shit\w*|fuck\w*|bullshit|ass(?:hole)?|bloody)\b",
-        re.I)),
+        re.IGNORECASE)),
     # Dismissive: answering a worry with a demand for proof. Asking for evidence is fine; the tell is a challenge
     # ("find me one", "just one would be fine"), so plain "please provide a stack trace" must not match.
     ("proof-demand", 8, re.compile(
@@ -43,16 +43,16 @@ HOSTILE = [
         r"prove|dispute)\b[^.?!]{0,60}\b(?:provide|show|find|link|cite)\b"
         r"|\b(?:do you have|got)\s+anything\s+(?:beyond|other than|besides)\b"
         r"|\bdon'?t tell me\b[^.?!]{0,40}\b(?:wrong|incorrect)\b"
-        r"|\bcitation needed\b", re.I)),
+        r"|\bcitation needed\b", re.IGNORECASE)),
 ]
 
 MITIGATE = [
     ("courtesy", -6, re.compile(
         r"\b(?:thanks?|thank you|please|appreciate|sorry|apolog\w+|good point|"
-        r"great|nice work|welcome)\b", re.I)),
+        r"great|nice work|welcome)\b", re.IGNORECASE)),
     ("hedge", -3, re.compile(
         r"\b(?:i think|imho|imo|i suggest|could we|perhaps|maybe|i may be wrong|"
-        r"my understanding)\b", re.I)),
+        r"my understanding)\b", re.IGNORECASE)),
 ]
 
 WARM_FUZZIES = [
@@ -62,7 +62,7 @@ WARM_FUZZIES = [
         r"|\bappreciate\s+(?:the|your|you taking)\b"
         r"|\bgrateful for\b"
         r"|\bkudos to\b"
-        r"|\bhuge thanks?\b", re.I)),
+        r"|\bhuge thanks?\b", re.IGNORECASE)),
     ("welcome", -10, re.compile(
         r"\bwelcome to\s+(?:the\s+)?(?:project|community|list|team|apache)\b"
         r"|\bglad (?:you|to have you)\b"
@@ -71,7 +71,7 @@ WARM_FUZZIES = [
         r"|\bdon'?t hesitate to\s+(?:ask|reach out|contact)\b"
         r"|\b(?:always|happy to) help\b"
         r"|\bif you(?:'re| are) new\b"
-        r"|\bplease ask\b", re.I)),
+        r"|\bplease ask\b", re.IGNORECASE)),
     ("praise", -7, re.compile(
         r"\bgreat (?:work|job|effort|point|idea|question|catch)\b"
         r"|\bnice (?:work|job|catch|one|fix)\b"
@@ -82,7 +82,7 @@ WARM_FUZZIES = [
         r"|\bthis is helpful\b"
         r"|\bI'?m impressed\b"
         r"|\byou'?re right\b"
-        r"|\bgood thinking\b", re.I)),
+        r"|\bgood thinking\b", re.IGNORECASE)),
     ("help-offer", -6, re.compile(
         r"\bI(?:'ll| will| can) help (?:you )?(?:with|you figure)\b"
         r"|\blet me (?:help|show|explain|walk you through)\b"
@@ -92,7 +92,7 @@ WARM_FUZZIES = [
         r"|\bI can take a look\b"
         r"|\blet'?s work (?:on this )?together\b"
         r"|\bI(?:'ll| will) take this on\b"
-        r"|\bhow can I help\b", re.I)),
+        r"|\bhow can I help\b", re.IGNORECASE)),
     ("learning", -5, re.compile(
         r"\bI (?:learned|am learning|didn'?t know|wasn'?t aware|stand corrected)\b"
         r"|\byou(?:'re| are) right(?:,| —| and)\b"
@@ -102,7 +102,7 @@ WARM_FUZZIES = [
         r"|\bthat makes sense\b"
         r"|\bI see (?:your point|what you mean|now)\b"
         r"|\bnow I understand\b"
-        r"|\bthis (?:helps|clarifies)\b", re.I)),
+        r"|\bthis (?:helps|clarifies)\b", re.IGNORECASE)),
     ("consensus", -6, re.compile(
         r"\bwhat do (?:you|others|people) think\b"
         r"|\bwould (?:you|anyone|people) be (?:open to|willing to|okay with)\b"
@@ -113,14 +113,14 @@ WARM_FUZZIES = [
         r"|\b(?:thoughts|opinions|concerns)\?\s*$"
         r"|\bany objections\b"
         r"|\bseeks? consensus\b"
-        r"|\bleaning (?:towards|toward)\b", re.I)),
+        r"|\bleaning (?:towards|toward)\b", re.IGNORECASE)),
     ("credit", -8, re.compile(
         r"\b(?:credit goes? to|thanks? to)\s+[\w'-]+(?:\s+[\w'-]+)?\s+for\b"
         r"|\bas\s+[\w'-]+(?:\s+[\w'-]+)?\s+(?:pointed out|noted|mentioned|said|explained)\b"
         r"|\bper\s+[\w'-]+(?:\s+[\w'-]+)?'?s\s+(?:suggestion|idea|point)\b"
         r"|\b[\w'-]+(?:\s+[\w'-]+)?\s+(?:originally|first) (?:proposed|suggested|found|noticed)\b"
         r"|\bfollowing\s+[\w'-]+(?:\s+[\w'-]+)?'?s\s+(?:advice|suggestion|lead)\b"
-        r"|\b[\w'-]+(?:\s+[\w'-]+)?\s+(?:was right|had a good point)\b", re.I)),
+        r"|\b[\w'-]+(?:\s+[\w'-]+)?\s+(?:was right|had a good point)\b", re.IGNORECASE)),
     ("patience", -5, re.compile(
         r"\bno (?:worries|problem|rush)\b"
         r"|\btake your time\b"
@@ -128,7 +128,7 @@ WARM_FUZZIES = [
         r"|\blet me (?:rephrase|try again|clarify)\b"
         r"|\bI understand (?:the confusion|this is tricky)\b"
         r"|\bthat'?s a common (?:misunderstanding|confusion|question)\b"
-        r"|\bmakes sense that (?:you(?:'re| are)|this is)\b", re.I)),
+        r"|\bmakes sense that (?:you(?:'re| are)|this is)\b", re.IGNORECASE)),
 ]
 
 QUESTION = re.compile(r"[^.!?\n]*\?")
@@ -137,11 +137,11 @@ LOADED = [
     ("loaded-even", 20, re.compile(
         r"\b(?:do|does|did|are|is|can|could|will|would)\s+"
         r"(?:\w+\s+)?you\s+even\b"
-        r"|\bbefore you (?:can|will)\b", re.I)),
+        r"|\bbefore you (?:can|will)\b", re.IGNORECASE)),
     ("loaded-even-perfect", 12, re.compile(
-        r"\b(?:have|has|had)\s+(?:\w+\s+)?you\s+even\b", re.I)),
+        r"\b(?:have|has|had)\s+(?:\w+\s+)?you\s+even\b", re.IGNORECASE)),
     ("loaded-ever", 12, re.compile(
-        r"\b(?:do|are|can|could|will|would)\s+you\s+ever\b", re.I)),
+        r"\b(?:do|are|can|could|will|would)\s+you\s+ever\b", re.IGNORECASE)),
 ]
 
 LEGAL_CAPS = re.compile(
@@ -156,9 +156,9 @@ LEGAL_CAPS = re.compile(
     r"|\b(?:DIRECT|INDIRECT|INCIDENTAL|SPECIAL|EXEMPLARY|CONSEQUENTIAL) DAMAGES\b"
     r"|\bCOPYRIGHT (?:HOLDERS?|OWNERS?)\b|\bAPACHE LICENSE\b")
 
-ORIGINAL = re.compile(r"^-{2,}\s*original message|^_{5,}\s*$", re.I)
-HEADER = re.compile(r"^(?:from|sent|date):\s", re.I)
-NOISE = re.compile(r"<?(?:https?|ftp|mailto):\S+|\S+@\S+|`[^`\n]*`|\b\w+(?:[._]\w+)+\b", re.I)
+ORIGINAL = re.compile(r"^-{2,}\s*original message|^_{5,}\s*$", re.IGNORECASE)
+HEADER = re.compile(r"^(?:from|sent|date):\s", re.IGNORECASE)
+NOISE = re.compile(r"<?(?:https?|ftp|mailto):\S+|\S+@\S+|`[^`\n]*`|\b\w+(?:[._]\w+)+\b", re.IGNORECASE)
 
 # The 0-5 scale, coldest first: (lowest raw score in the band, score, face, what it means). Raw runs -50 (warm) to 100 (hostile).
 # shortcut: guessed cut points, not calibrated against real complaints; tune them once a control set exists.
@@ -182,7 +182,7 @@ def strip_quoted(body: str) -> str:
             break
         if HEADER.match(stripped) and any(HEADER.match(n.strip()) for n in lines[i + 1 : i + 3]):
             break  # From:/Sent: header block
-        if re.match(r"on\s", stripped, re.I) and any("wrote:" in n for n in lines[i : i + 2]):
+        if re.match(r"on\s", stripped, re.IGNORECASE) and any("wrote:" in n for n in lines[i : i + 2]):
             tail = [n for n in lines[i + 1 : i + 4] if n.strip()]
             if not any(n.lstrip().startswith(">") for n in tail[:2]):
                 break  # unmarked quote: a top-post

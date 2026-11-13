@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
-
 from oaken_core.errors import InvalidInput
+
 from oaken_plugins.ingestor_mail.query import Query, matches, parse
 
 

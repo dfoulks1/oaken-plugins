@@ -14,7 +14,6 @@ from oaken_core.labels import BaseLabel
 from oaken_core.plugins.base import BaseTriager
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # the label keys it writes; the sibling signal triagers define the shared ones identically
 PRODUCT = BaseLabel.new("product", "The product or project the signal is about")
 RANSOMWARE = BaseLabel.new("ransomware", "CISA says ransomware campaigns use it", ("known",))

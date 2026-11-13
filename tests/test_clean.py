@@ -4,7 +4,12 @@
 import pytest
 from pydantic import ValidationError
 
-from oaken_plugins.formatter_rfc822.clean import CleaningSettings, clean_message, clean_text, normalize
+from oaken_plugins.formatter_rfc822.clean import (
+    CleaningSettings,
+    clean_message,
+    clean_text,
+    normalize,
+)
 
 CFG = CleaningSettings()
 
@@ -25,7 +30,7 @@ def rules(text: str, cfg: CleaningSettings = CFG) -> set[str | None]:
 
 
 def test_normalize_removes_invisible_and_control_characters() -> None:
-    assert normalize("a​b‮c﻿d­e\x07f") == "abcdef"
+    assert normalize("a\u200bb\u202ec\ufeffd\u00ade\x07f") == "abcdef"
 
 
 def test_normalize_keeps_joiners_that_scripts_and_emoji_need() -> None:

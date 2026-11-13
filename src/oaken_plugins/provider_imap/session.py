@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, TypeVar
 
 from oaken_core.errors import ProviderError
+
 from oaken_plugins.provider_imap.config import ImapConfig
 
 for _name in ("imapclient", "imapclient.imaplib"):
@@ -95,7 +96,7 @@ class Session:
             if any(code in str(exc).upper() for code in _NOT_THE_PASSWORD):
                 raise ImapError("imap: the server is not accepting logins right now") from None
             raise LoginRejected from None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - whatever the library raises becomes the plugin's own error
             raise _failure(exc) from None
         return cls(client)
 
@@ -104,7 +105,7 @@ class Session:
             raise ImapError("imap: the connection to the server was lost")
         try:
             return await asyncio.to_thread(fn, *args, **kwargs)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - whatever the library raises becomes the plugin's own error
             failure = _failure(exc)
             if "lost" in str(failure) or "too long" in str(failure):
                 self._dead = True  # the socket is in an unknown state: use it no more

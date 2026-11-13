@@ -1,12 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """A Gmail instance through the real pipeline: a sync job pulls, Intake formats, the mail ingestor stores, the cursor moves on."""
 
-from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
 import pytest
-
 from gmail_fakes import CREDS, FakeGoogle, MemoryStore
 from oaken_core.clock import FakeClock
 from oaken_core.daemon.core import Core
@@ -15,6 +13,7 @@ from oaken_core.plugins.host import PluginTables
 from oaken_core.plugins.jobs import register_plugin_jobs
 from oaken_core.settings import Settings
 from oaken_core.store import SqliteStore
+
 from oaken_plugins.formatter_rfc822 import Rfc822Formatter
 from oaken_plugins.ingestor_mail import MailIngestor
 from oaken_plugins.provider_gmail import GmailProvider

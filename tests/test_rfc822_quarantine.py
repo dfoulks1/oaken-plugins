@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 import hashlib
-import os
 from pathlib import Path
 
 import pytest

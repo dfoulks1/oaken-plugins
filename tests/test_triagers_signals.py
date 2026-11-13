@@ -3,6 +3,7 @@ from oaken_core.clock import FakeClock
 from oaken_core.intake import IntakeItem
 from oaken_core.labels import LabelMaker
 from oaken_core.plugins.contracts import PluginContext
+
 from oaken_plugins.triager_cve import CveTriager
 from oaken_plugins.triager_eol import EolTriager
 from oaken_plugins.triager_hackernews import HackerNewsTriager

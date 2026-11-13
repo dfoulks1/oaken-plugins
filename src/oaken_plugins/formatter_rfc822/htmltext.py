@@ -19,13 +19,10 @@ except ImportError:  # the `clean` extra is not installed: html_to_text answers 
     LexborNode = Any
 
 _DROP = frozenset(
-    "script style head title noscript template svg meta link object embed iframe canvas "
-    "video audio map math".split()
+    ["script", "style", "head", "title", "noscript", "template", "svg", "meta", "link", "object", "embed", "iframe", "canvas", "video", "audio", "map", "math"]
 )
 _BLOCK = frozenset(
-    "p div h1 h2 h3 h4 h5 h6 ul ol li table tr blockquote pre hr section article header footer "
-    "nav aside main address form fieldset center dl dt dd figure figcaption tbody thead tfoot "
-    "details summary".split()
+    ["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "table", "tr", "blockquote", "pre", "hr", "section", "article", "header", "footer", "nav", "aside", "main", "address", "form", "fieldset", "center", "dl", "dt", "dd", "figure", "figcaption", "tbody", "thead", "tfoot", "details", "summary"]
 )
 # Elements a mail client wraps around the quoted part of a reply.
 _QUOTE_CLASSES = frozenset({"gmail_quote", "yahoo_quoted", "protonmail_quote", "moz-cite-prefix"})

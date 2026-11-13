@@ -10,19 +10,17 @@ shapes are written from Google's API documentation, not recorded from a real acc
 import asyncio
 import base64
 import json
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from email import message_from_bytes
 from typing import Any
 from urllib.parse import parse_qs
 
 import httpx2
-import pytest
-
 from oaken_core.clock import FakeClock
 from oaken_core.events import EventBus, PluginEvent
 from oaken_core.logging import get_logger
 from oaken_core.plugins.contracts import PluginContext
+
 from oaken_plugins.provider_gmail import GmailProvider
 from oaken_plugins.provider_gmail.tokens import ClientCredentials
 

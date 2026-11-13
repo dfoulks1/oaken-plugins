@@ -14,7 +14,6 @@ from oaken_core.labels import BaseLabel
 from oaken_core.plugins.base import BaseTriager
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # the label keys it writes; the sibling signal triagers define the shared ones identically
 PRODUCT = BaseLabel.new("product", "The product or project the signal is about")
 SEVERITY = BaseLabel.new("severity", "How much a vulnerability matters", ("critical", "high", "medium", "low", "unscored", "exploited"))

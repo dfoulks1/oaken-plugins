@@ -2,7 +2,6 @@
 """Examples from RFC 5228 (section 10 and the test descriptions) with the results it documents."""
 
 import pytest
-
 from sieve_helpers import MAIL, go, locations
 
 EXAMPLE = """# Example Sieve Filter
@@ -57,8 +56,8 @@ def mail(headers: str) -> bytes:
         ("From: boss@example.com\nTo: me@example.com", "inbox", []),  # kept: company mail
         ("From: x@elsewhere.org\nTo: you@elsewhere.org", "filed", ["spam"]),  # not to me
         (
-            "From: x@elsewhere.org\nTo: friend@elsewhere.org\nCc: me@example.com\n"
-            "Subject: Make MONEY fast!!",
+            ("From: x@elsewhere.org\nTo: friend@elsewhere.org\nCc: me@example.com\n"
+            "Subject: Make MONEY fast!!"),
             "filed",
             ["spam"],
         ),

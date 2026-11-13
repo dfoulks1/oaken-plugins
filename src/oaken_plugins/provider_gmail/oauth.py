@@ -20,8 +20,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx2
-
 from oaken_core.errors import PluginError, ProviderError
+
 from oaken_plugins.provider_gmail.config import AUTH_URL, SCOPE, TOKEN_URL
 from oaken_plugins.provider_gmail.tokens import ClientCredentials, TokenStore
 

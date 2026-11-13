@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from oaken_plugins.formatter_rfc822.htmltext import html_to_text
 
+
 class CleaningSettings(BaseModel):
     """Tuning for the cleaner. Every pattern is a regular expression matched against one line (long lines are cut before matching)."""
 
@@ -52,14 +53,14 @@ _SIGNATURE_DELIMITER_MAX = 25
 # Characters that carry no meaning in mail and are used to hide or reorder text: zero-width space,
 # directional marks and overrides, word joiner, byte-order mark, soft hyphen, combining grapheme
 # joiner, Mongolian vowel separator. ZWNJ and ZWJ stay: scripts and emoji need them.
-_INVISIBLE = re.compile("[​‎‏‪-‮⁠⁦-⁩﻿­͏᠎]")
+_INVISIBLE = re.compile("[\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff\u00ad\u034f\u180e]")
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 _I = re.IGNORECASE
 DEFAULT_ATTRIBUTION = (
     r"^on\s.{5,300}\bwrote:\s*$",
-    r"^(?:am|le|el|il|em|op|den)\s.{5,300}\b(?:schrieb|a écrit|escribió|ha scritto|escreveu"
-    r"|schreef|skrev)\b.*:\s*$",
+    (r"^(?:am|le|el|il|em|op|den)\s.{5,300}\b(?:schrieb|a écrit|escribió|ha scritto|escreveu"
+    r"|schreef|skrev)\b.*:\s*$"),
 )
 _ORIGINAL_MARKER = re.compile(
     r"^\s*-{2,}\s*(?:original message|original-nachricht|message d.origine|mensaje original"
@@ -88,12 +89,12 @@ DEFAULT_FOOTER = (
     r"\bour mailing address is\b",
 )
 DEFAULT_DISCLAIMER = (
-    r"\b(?:this|the) (?:e-?mail|message|communication)(?: and any (?:files|attachments)[^.]*)?"
-    r" (?:is|are|may be|may contain|contains?) (?:confidential|privileged|intended)",
-    r"\bintended (?:solely |only )?for the (?:use of the )?"
-    r"(?:individual|addressee|recipient|named)",
-    r"\bif you (?:are not the intended|have received this (?:e-?mail|message|communication)"
-    r" in error|received this in error)",
+    (r"\b(?:this|the) (?:e-?mail|message|communication)(?: and any (?:files|attachments)[^.]*)?"
+    r" (?:is|are|may be|may contain|contains?) (?:confidential|privileged|intended)"),
+    (r"\bintended (?:solely |only )?for the (?:use of the )?"
+    r"(?:individual|addressee|recipient|named)"),
+    (r"\bif you (?:are not the intended|have received this (?:e-?mail|message|communication)"
+    r" in error|received this in error)"),
     r"\bconfidentiality notice\b|^disclaimer\b|\blegal disclaimer\b",
     r"\bplease (?:consider|think of) the (?:environment|planet)\b|\bbefore printing\b",
     r"\bunauthori[sz]ed (?:use|disclosure|review|distribution)\b",
@@ -106,9 +107,9 @@ DEFAULT_BOILERPLATE = (
     r"^\[(?:image|cid):[^\]]*\]$",
 )
 DEFAULT_CLOSING = (
-    r"^(?:(?:best|kind|warm|many|with|my)\s+)?(?:regards|wishes|thanks|thank you|cheers"
+    (r"^(?:(?:best|kind|warm|many|with|my)\s+)?(?:regards|wishes|thanks|thank you|cheers"
     r"|sincerely|cordially|respectfully|yours(?:\s+(?:truly|sincerely|faithfully))?|best|ciao"
-    r"|mfg|vg|cordialement|saludos|grazie)(?:\s+(?:regards|wishes))?[\s,.!-]*$",
+    r"|mfg|vg|cordialement|saludos|grazie)(?:\s+(?:regards|wishes))?[\s,.!-]*$"),
 )
 _SEPARATOR = re.compile(r"^\s*[-_=*~]{3,}\s*$")
 _SIG_DELIMITER = re.compile(r"^--\s?$")

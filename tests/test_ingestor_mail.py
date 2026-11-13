@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from oaken_core.clock import FakeClock
 from oaken_core.daemon.core import Core
 from oaken_core.errors import NotFound
@@ -14,6 +13,7 @@ from oaken_core.operations.caller import CallerContext
 from oaken_core.plugins.host import PluginTables
 from oaken_core.settings import Settings
 from oaken_core.store import SqliteStore
+
 from oaken_plugins.formatter_rfc822 import Rfc822Formatter
 from oaken_plugins.ingestor_mail import MailIngestor
 

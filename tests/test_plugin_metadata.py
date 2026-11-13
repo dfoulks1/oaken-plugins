@@ -4,13 +4,12 @@
 import importlib
 import inspect
 
-import pytest
-from packaging.specifiers import SpecifierSet
-from packaging.version import Version
-
 import oaken_core
+import pytest
 from oaken_core.plugins import catalog
 from oaken_core.plugins.contracts import PLUGIN_API_VERSION
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 from test_catalog_declared import KINDS
 
 ENTRIES = catalog.entries(KINDS)

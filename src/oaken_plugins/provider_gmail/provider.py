@@ -17,33 +17,45 @@ The sync cursor is a small JSON text:
 * ``{"mode":"inc", "history":H, "page":T?}``: caught up; the next sync asks Gmail what changed since ``H``.
 """
 
-import time
 import asyncio
 import base64
 import binascii
 import dataclasses
 import json
-from email.message import EmailMessage
-from email.policy import SMTP as SMTP_POLICY
-from email.utils import formatdate, make_msgid
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from email.message import EmailMessage
+from email.policy import SMTP as SMTP_POLICY
+from email.utils import formatdate, make_msgid
 from typing import Any, ClassVar
 
 import httpx2
-from pydantic import BaseModel
-
 from oaken_core.errors import NotFound, OakenError, PluginError, ProviderError
 from oaken_core.events import PluginEvent
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseProvider, BaseTemplatePlugin, command
-from oaken_core.plugins.contracts import Health, PluginContext, PluginJobHandler, PluginOpContext, PluginPreview, PluginScheduledTask
+from oaken_core.plugins.contracts import (
+    Health,
+    PluginContext,
+    PluginJobHandler,
+    PluginOpContext,
+    PluginPreview,
+    PluginScheduledTask,
+)
+from pydantic import BaseModel
+
 from oaken_plugins.mixins.mail import MailProvider
 from oaken_plugins.provider_gmail.api import GmailApi
 from oaken_plugins.provider_gmail.config import GmailConfig
 from oaken_plugins.provider_gmail.oauth import authorize, load_client
-from oaken_plugins.provider_gmail.tokens import ClientCredentials, KeyringStore, TokenManager, TokenStore
+from oaken_plugins.provider_gmail.tokens import (
+    ClientCredentials,
+    KeyringStore,
+    TokenManager,
+    TokenStore,
+)
 
 log = get_logger("oaken_plugins.gmail")
 SEEN, FLAGGED = "\\Seen", "\\Flagged"

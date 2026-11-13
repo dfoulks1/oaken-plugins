@@ -17,15 +17,25 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import Any, ClassVar
 
-from pydantic import BaseModel
-
 from oaken_core import identity
 from oaken_core.errors import NotFound, OakenError, PluginError
 from oaken_core.logging import get_logger
 from oaken_core.plugins.base import BaseProvider, BaseTemplatePlugin, command
-from oaken_core.plugins.contracts import Health, PluginContext, PluginJobHandler, PluginOpContext, PluginScheduledTask
+from oaken_core.plugins.contracts import (
+    Health,
+    PluginContext,
+    PluginJobHandler,
+    PluginOpContext,
+    PluginScheduledTask,
+)
+from pydantic import BaseModel
+
 from oaken_plugins.provider_imap.config import ImapConfig
-from oaken_plugins.provider_imap.session import Folder, ImapError, LoginRejected, Session
+from oaken_plugins.provider_imap.session import (
+    Folder,
+    LoginRejected,
+    Session,
+)
 
 log = get_logger("oaken_plugins.imap")
 CURSOR_COLLECTION = "imap_cursor"  # one record per account in the record store: its per-folder sync bookmark

@@ -3,7 +3,12 @@
 
 import pytest
 
-from oaken_plugins.triager_filters.rules import FilterError, MailView, apply, parse_rules
+from oaken_plugins.triager_filters.rules import (
+    FilterError,
+    MailView,
+    apply,
+    parse_rules,
+)
 
 MAIL = MailView(sender="ann smith <ann@x.test>", to="me@x.test", subject="weekly report", text="the numbers are in", attachment=True, sent="2026-11-03")
 

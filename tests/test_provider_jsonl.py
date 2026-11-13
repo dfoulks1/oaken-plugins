@@ -3,6 +3,7 @@ import pytest
 from oaken_core.clock import FakeClock
 from oaken_core.errors import InvalidInput, PluginError
 from oaken_core.plugins.contracts import PluginContext
+
 from oaken_plugins.provider_jsonl import IngestIn, JsonlProvider
 
 LINES = '{"company": "Acme", "signal": "hiring"}\n\n{"company": "Zed"}\nnot json\n[1, 2]\n'
