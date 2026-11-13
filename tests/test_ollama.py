@@ -309,3 +309,19 @@ async def test_core_starts_the_backend_with_no_model_and_with_one(ollama: FakeOl
         assert core.host.get("llm_backend", "ollama").context_window > 0 and core.host.get("llm_backend", "pinned").model_id == "qwen2.5:3b"
     finally:
         await core.host.stop()
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:11434", "http://localhost:11434", "http://[::1]:11434"])
+async def test_a_loopback_base_url_is_reported_as_this_machine(ollama: FakeOllama, url: str) -> None:
+    assert (await started(ollama, base_url=url)).off_machine is False
+    assert (await started_without_a_model(ollama, base_url=url)).off_machine is False
+
+
+@pytest.mark.parametrize("url", ["http://gpu-box:11434", "http://192.168.1.20:11434", "https://ollama.example.com"])
+async def test_another_machine_is_reported_so_the_router_never_takes_it_as_local(ollama: FakeOllama, url: str) -> None:
+    # the plugin cannot see its own `locality` (the host keeps it); it says where it sends text and the router decides
+    assert (await started(ollama, base_url=url)).off_machine is True
+    assert (await started_without_a_model(ollama, base_url=url)).off_machine is True
+    remote = OllamaRemoteLLM(transport=ollama.transport)
+    await remote.start(make_context("llm_backend", config={"backoff": 0, "base_url": url}))
+    assert remote.off_machine is True

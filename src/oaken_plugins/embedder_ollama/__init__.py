@@ -22,7 +22,7 @@ class OllamaEmbedder(BaseEmbedder):
     instance's ``model`` setting. ``start`` confirms the model is installed, reads its context length and embeds one probe text to
     learn the vector size."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
-    version: ClassVar[str] = "0.1.0"
+    version: ClassVar[str] = "0.1.1"  # 0.1.1: says whether base_url is another machine (off_machine)
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
@@ -38,7 +38,7 @@ class OllamaEmbedder(BaseEmbedder):
     async def start(self, ctx: PluginContext) -> None:
         await super().start(ctx)
         cfg = self.config  # parsed by BasePlugin from config_model
-        check_url(cfg.base_url, ctx.name)
+        self.off_machine = not check_url(cfg.base_url, ctx.name)  # the router never takes another machine as `local`
         self.model_id = cfg.model
         self._client = OllamaClient(cfg, ctx.name, transport=self._transport)
         try:
