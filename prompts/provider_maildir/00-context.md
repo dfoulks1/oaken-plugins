@@ -22,6 +22,11 @@ one method of its own (`pull`).
 - (mtime, name) tie-breaking if same-second delivery ever re-sends (noted as a shortcut in code).
 - Maildir++ subfolders (a Maildir can nest folders); flat Maildir first.
 
+## Superseded
+
+`01-port-to-core.md` ports this plugin to oaken-core 1.0 as `provider_maildir` in `oaken-plugins`: a template, synced by a job, with a
+seen-set instead of the mtime cursor, and Maildir++ and Thunderbird trees (both "Open" items above).
+
 ## Provenance
 
 AI-assisted (Kiro), reviewed before public release, under the ASF generative-tooling guideline.

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Maildir** (`provider.maildir` 0.2.0): `oaken-provider-maildir` ported from oaken-mail's older plugin API into `src/oaken_plugins/`, where
+  it loads on oaken-core 1.0. A template like `imap`: one instance per Maildir, synced by a job every `poll_seconds`, with a `check` command.
+  It reads a plain Maildir, Maildir++ folders and Thunderbird's maildir store (`Lists.sbd/apache/`), read-only, and submits raw `rfc822`
+  for the formatter and the `mail` ingestor. It remembers which unique names it has sent, so a flag change is not new mail and mail copied
+  in with an old mtime is still found. Symlinks are never followed; `max_message_bytes` and `max_per_sync` bound a run. Everything it
+  submits is labelled confidential unless `confidential = false`. The old top-level `oaken-provider-maildir/` folder is gone.
+
 - **Ollama** (`llm_backend.ollama`, `llm_backend.ollama-remote`, `embedder.ollama` 0.1.1): each says, once started, whether its `base_url` is
   another machine (`off_machine`). With oaken-core's router check, an instance typed `locality = "local"` that points at another box is treated as
   hosted, so a confidential item cannot reach it by a typo. Loopback means `localhost`, `127.0.0.0/8` and `::1`; any other host name counts
