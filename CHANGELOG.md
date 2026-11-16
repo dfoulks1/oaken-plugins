@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **LM Studio** (`llm_backend.lmstudio`, `embedder.lmstudio` 0.1.0, new): LM Studio's local server as a model backend and an embedder, an
+  alternative to Ollama. Generation and vectors use LM Studio's OpenAI-compatible routes (`/v1/chat/completions` with a `json_schema`
+  `response_format`, `/v1/embeddings`); the model list, each model's kind and its loaded context come from LM Studio's own
+  `/api/v1/models` (0.4+), else `/api/v0/models`, else `/v1/models`. The context reported is what LM Studio loaded the model with (4096 if
+  not loaded), not its maximum. Reasoning (`reasoning`, `reasoning_content` or a leading `<think>` block) goes to `thinking`, never the
+  answer. Like Ollama, a non-loopback `base_url` is reported as `off_machine`. For a loopback `base_url` proxy environment variables are
+  ignored, and redirects are never followed. An optional API token is read from the keyring (`api_token`), never from `config.toml`.
+  Nothing is ever loaded or downloaded.
+
 - **Ollama** (`llm_backend.ollama`, `llm_backend.ollama-remote`, `embedder.ollama` 0.1.1): each says, once started, whether its `base_url` is
   another machine (`off_machine`). With oaken-core's router check, an instance typed `locality = "local"` that points at another box is treated as
   hosted, so a confidential item cannot reach it by a typo. Loopback means `localhost`, `127.0.0.0/8` and `::1`; any other host name counts

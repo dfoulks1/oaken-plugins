@@ -49,6 +49,8 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `ollama` | llm_backend | the system's Ollama as the model backend: it needs no model, it lists the models Ollama has |
 | `ollama` | embedder | embeddings from an Ollama server (it needs a model: that is its own setting) |
 | `ollama-remote` | llm_backend | an Ollama server on another machine, with its own address |
+| `lmstudio` | llm_backend | LM Studio's server (OpenAI-compatible) as the model backend: it needs no model, it lists LM Studio's chat models and their loaded context |
+| `lmstudio` | embedder | embeddings from LM Studio (it needs an embedding model: that is its own setting) |
 | `localname` | gateway | friendly `*.localhost` names for the console and API |
 
 ## Versions, tags and the listing
