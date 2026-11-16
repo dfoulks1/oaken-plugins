@@ -4,72 +4,42 @@
 Careful means: it talks only to a loopback address unless the user said otherwise
 (the router decides who may see what by ``locality``), it retries only what is safe to retry, it never
 auto-pulls a model, and no error message carries the body of a request or a response (those hold the
-owner's text).
+owner's text). The HTTP part (retries, error rules, the loopback check, no environment proxy for a
+loopback address) is ``oaken_plugins._modelhttp``, shared with any other model server's plugin.
 """
 
-import asyncio
-import ipaddress
 from typing import Any
-from urllib.parse import urlsplit
 
 import httpx2
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import Field
 
 from oaken_core.errors import AIBackendError, PluginError
 from oaken_core.logging import get_logger
+from oaken_plugins._modelhttp import HTTPBackendConfig, JSONClient, check_url, is_loopback
+
+__all__ = ["DEFAULT_URL", "OllamaClient", "OllamaConfig", "check_url", "installed_models", "is_loopback"]  # check_url and is_loopback live in _modelhttp now
 
 log = get_logger("oaken_plugins.ollama")
 
 DEFAULT_URL = "http://127.0.0.1:11434"
 
 
-class OllamaConfig(BaseModel):
+class OllamaConfig(HTTPBackendConfig):
     """``[plugins.<kind>.<name>]``. Nothing here is a secret."""
 
-    model_config = ConfigDict(extra="forbid")
-
     base_url: str = DEFAULT_URL
-    model: str = ""  # the model to run; the plugin will not start without one
+    model: str = ""  # the model to run: required by the embedder, an optional default for the LLM backend
     keep_alive: str = "5m"  # how long Ollama keeps the model loaded after a call
-    timeout: float = Field(default=120.0, gt=0)  # seconds, per request
-    max_retries: int = Field(default=2, ge=0, le=10)  # extra tries after a connection error / 5xx
-    backoff: float = Field(default=0.5, ge=0)  # seconds, doubled each retry
     batch_size: int = Field(default=32, ge=1, le=1024)  # texts per /api/embed call
     # Override whether a reasoning model thinks before it answers. Unset, each request decides, and
     # Oaken's tasks ask for no reasoning (a short JSON answer; reasoning costs time and can use up
     # the output limit before the answer is written). true turns it on for every call.
     think: bool | None = None
-
-    @classmethod
-    def parse(cls, raw: dict[str, Any], who: str) -> "OllamaConfig":
-        try:
-            return cls.model_validate(raw)
-        except ValidationError as exc:
-            fields = ", ".join(str(e["loc"][0]) for e in exc.errors() if e["loc"])
-            raise PluginError(f"{who}: invalid [plugins.{who}] settings ({fields})") from None
-
-
-def is_loopback(url: str) -> bool:
-    """True for ``localhost``, ``127.0.0.0/8`` and ``::1`` and nothing else (no DNS lookups)."""
-    host = (urlsplit(url).hostname or "").lower()
-    if host == "localhost":
-        return True
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
-        ip = ip.ipv4_mapped
-    return ip.is_loopback
-
-
-def check_url(url: str, who: str) -> bool:
-    """Refuse a URL that is not http(s); return whether the host is loopback. Who may send what to a
-    non-loopback host is the router's call (``locality``), not the plugin's; the plugins report a
-    non-loopback host as ``off_machine`` so the router never takes it as ``local``."""
-    if urlsplit(url).scheme not in {"http", "https"} or not urlsplit(url).hostname:
-        raise PluginError(f"{who}: base_url must be an http(s) URL, got {url!r}")
-    return is_loopback(url)
+    # The context Ollama loads a chat model with (its ``num_ctx``), in tokens. Unset, Ollama uses its own
+    # default (``OLLAMA_CONTEXT_LENGTH``; 4096 on current releases) and silently drops what does not fit,
+    # so the backend tells the router no more than that. Set it to give the router a bigger window; a
+    # bigger one costs memory. One value per instance, so the model is not reloaded between calls.
+    num_ctx: int | None = Field(default=None, ge=512)
 
 
 def _has_model(installed: list[str], wanted: str) -> bool:
@@ -77,7 +47,9 @@ def _has_model(installed: list[str], wanted: str) -> bool:
     return wanted in names or (":" not in wanted and f"{wanted}:latest" in names)
 
 
-class OllamaClient:
+class OllamaClient(JSONClient):
+    config: OllamaConfig
+
     def __init__(
         self,
         config: OllamaConfig,
@@ -85,47 +57,12 @@ class OllamaClient:
         *,
         transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
-        self.config, self.who = config, who
-        self._http = httpx2.AsyncClient(
-            base_url=config.base_url,
-            timeout=httpx2.Timeout(config.timeout, connect=10.0),
-            transport=transport,
-        )
-
-    async def close(self) -> None:
-        await self._http.aclose()
-
-    async def _call(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
-        tries = self.config.max_retries + 1
-        for attempt in range(tries):
-            last = attempt == tries - 1
-            try:
-                resp = await self._http.request(method, path, json=body)
-            except (httpx2.ConnectError, httpx2.ConnectTimeout):
-                if last:
-                    raise AIBackendError(
-                        f"{self.who}: cannot reach Ollama at {self.config.base_url}; is it running?"
-                    ) from None
-            except httpx2.TransportError as exc:
-                raise AIBackendError(f"{self.who}: request failed ({type(exc).__name__})") from None
-            else:
-                if resp.status_code >= 500:
-                    if last:
-                        raise AIBackendError(f"{self.who}: Ollama answered {resp.status_code}")
-                elif resp.status_code >= 400:
-                    raise AIBackendError(f"{self.who}: Ollama answered {resp.status_code}")
-                else:
-                    try:
-                        return resp.json()
-                    except ValueError:
-                        raise AIBackendError(f"{self.who}: Ollama sent invalid JSON") from None
-            await asyncio.sleep(self.config.backoff * 2**attempt)
-        raise AssertionError("unreachable")
+        super().__init__(config, who, "Ollama", transport=transport)
 
     # -- endpoints -----------------------------------------------------------------------------
     async def installed_models(self) -> list[str]:
         """The model ids Ollama has pulled, from ``/api/tags``. Never pulls."""
-        tags = await self._call("GET", "/api/tags")
+        tags = await self.call("GET", "/api/tags")
         return [
             m.get("name", "")
             for m in tags.get("models", [])
@@ -141,7 +78,7 @@ class OllamaClient:
             )
 
     async def context_length(self, name: str) -> int:
-        info = await self._call("POST", "/api/show", {"model": name})
+        info = await self.call("POST", "/api/show", {"model": name})
         for key, value in (info.get("model_info") or {}).items():
             if key.endswith(".context_length") and isinstance(value, int):
                 return value
@@ -151,7 +88,7 @@ class OllamaClient:
         out: list[list[float]] = []
         for i in range(0, len(texts), self.config.batch_size):
             batch = texts[i : i + self.config.batch_size]
-            data = await self._call(
+            data = await self.call(
                 "POST",
                 "/api/embed",
                 {"model": name, "input": batch, "keep_alive": self.config.keep_alive},
@@ -176,6 +113,8 @@ class OllamaClient:
         options: dict[str, Any] = {"temperature": temperature}
         if max_tokens:
             options["num_predict"] = max_tokens
+        if self.config.num_ctx:
+            options["num_ctx"] = self.config.num_ctx  # what Ollama keeps of the prompt; unset, its own default
         body: dict[str, Any] = {
             "model": name,
             "messages": [
@@ -190,7 +129,7 @@ class OllamaClient:
             body["format"] = schema
         if think is not None:  # None: leave it to the model (a backend skips what it cannot do)
             body["think"] = think
-        data = await self._call("POST", "/api/chat", body)
+        data = await self.call("POST", "/api/chat", body)
         if not isinstance(data, dict) or not isinstance(data.get("message"), dict):
             raise AIBackendError(f"{self.who}: Ollama sent an unexpected reply")
         # What we asked, beside the answer, for the trace (the messages are the caller's own).
@@ -202,12 +141,8 @@ class OllamaClient:
         }
         return data
 
-    async def reachable(self) -> bool:
-        try:
-            await self._call("GET", "/api/tags")
-        except AIBackendError:
-            return False
-        return True
+    async def reachable(self) -> bool:  # type: ignore[override]
+        return await super().reachable("/api/tags")
 
 
 async def installed_models(config: dict[str, Any], who: str, *, transport: httpx2.AsyncBaseTransport | None = None) -> list[str]:

@@ -22,7 +22,7 @@ class OllamaEmbedder(BaseEmbedder):
     instance's ``model`` setting. ``start`` confirms the model is installed, reads its context length and embeds one probe text to
     learn the vector size."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
-    version: ClassVar[str] = "0.1.1"  # 0.1.1: says whether base_url is another machine (off_machine)
+    version: ClassVar[str] = "0.1.2"  # 0.1.2: the shared HTTP client, which never sends a loopback address through an environment proxy
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with

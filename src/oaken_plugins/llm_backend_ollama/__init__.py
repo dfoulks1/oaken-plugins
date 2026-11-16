@@ -15,7 +15,7 @@ from oaken_core.plugins.base import BaseLLMBackend
 from oaken_core.plugins.contracts import Health, LLMRequest, LLMResponse, PluginContext
 
 
-DEFAULT_CONTEXT = 4096
+DEFAULT_CONTEXT = 4096  # Ollama's default num_ctx on current releases (OLLAMA_CONTEXT_LENGTH changes it); older ones used 2048
 
 
 class OllamaLLM(BaseLLMBackend):
@@ -25,14 +25,15 @@ class OllamaLLM(BaseLLMBackend):
     it lists the models it has, so a settings dialog can offer them in a dropdown. The model is the instance's ``model`` setting.
     Who may send it what is the router's call, from the instance's ``locality`` (unset means hosted, the strictest)."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
-    version: ClassVar[str] = "0.1.1"  # 0.1.1: says whether base_url is another machine (off_machine)
+    version: ClassVar[str] = "0.2.0"  # 0.2.0: num_ctx, a context window Ollama really keeps, no environment proxy for a loopback address
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     config_model = OllamaConfig
     setup_help = ("Needs an Ollama server (ollama.com); `base_url` is http://127.0.0.1:11434 unless you say otherwise. The backend itself needs no model: it only has to "
                   "answer, and say which models are pulled. The model is chosen where Ollama is used (an analyzer's route). `model` here is an optional default for a call "
-                  "that names none.")
+                  "that names none. "
+                  "Ollama keeps only its default context (4096 tokens) of a prompt unless `num_ctx` is set; set it if your analyzers send more.")
     config_example = '[plugins.llm_backend.ollama]\nlocality = "local"\n# model = "llama3.2:3b"   # optional: a default for calls that name no model'
 
     def __init__(self, *, transport: httpx2.AsyncBaseTransport | None = None) -> None:
@@ -45,13 +46,14 @@ class OllamaLLM(BaseLLMBackend):
         self.off_machine = not check_url(cfg.base_url, ctx.name)  # the router never takes another machine as `local`
         self._default = cfg.model  # an optional default; the backend works without one
         self.model_id = cfg.model or "ollama"  # core's contract wants an id: with no default it names the backend, and no call ever runs it
-        self.context_window = DEFAULT_CONTEXT  # shortcut: Ollama's own default window, for a backend that knows no model; core asks for one number
+        # What Ollama keeps of a prompt: `num_ctx` if set, else its own default. Core asks for one number, and the router cuts input to it.
+        self.context_window = cfg.num_ctx or DEFAULT_CONTEXT
         self._client = OllamaClient(cfg, ctx.name, transport=self._transport)
         try:
             await self._client.installed_models()  # the call works, and Ollama says which models it has: that is all a backend needs
-            if self._default:  # a default, if there is one, tells the router how much fits
+            if self._default:  # a default, if there is one, may be smaller than that
                 try:
-                    self.context_window = await self._client.context_length(self._default) or DEFAULT_CONTEXT
+                    self.context_window = min(self.context_window, await self._client.context_length(self._default) or self.context_window)
                 except OakenError:
                     pass  # unknown: the default may not be pulled yet, which is not the backend's failure
         except BaseException:
