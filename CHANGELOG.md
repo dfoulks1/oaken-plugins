@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **mbox** (`provider.mbox` 0.2.0): ported to oaken-core's plugin API from the top-level `oaken-provider-mbox` (0.1.0, oaken-mail's older
+  API, which no longer loaded), and now a template: one instance per mbox file or folder of them, such as a Thunderbird profile's
+  `Mail/Local Folders` or `ImapMail/<server>` (subfolders in `X.sbd/`; indexes, symlinks, maildirs, Trash and Junk left out). A scheduled `sync`
+  job reads each folder from a byte offset in bounded steps (`max_per_sync`), submits raw bytes with `format = "rfc822"`, and notices a
+  compacted (rewritten) file by a hash of the bytes before the offset, then reads it again submitting only messages it has not handed over.
+  Messages Thunderbird marked deleted (`X-Mozilla-Status` 0x0008) and ones over `max_message_bytes` are skipped; the last message of a file
+  written in the last few seconds waits for the next sync. `confidential` defaults to **true**, unlike `imap` and `gmail`: local archives are
+  usually personal mail. A `check` command lists the folders and counts messages without submitting any. It never writes to the files.
+
 - **Ollama** (`llm_backend.ollama`, `llm_backend.ollama-remote`, `embedder.ollama` 0.1.1): each says, once started, whether its `base_url` is
   another machine (`off_machine`). With oaken-core's router check, an instance typed `locality = "local"` that points at another box is treated as
   hosted, so a confidential item cannot reach it by a typo. Loopback means `localhost`, `127.0.0.0/8` and `::1`; any other host name counts

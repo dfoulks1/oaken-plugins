@@ -45,6 +45,7 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `exec` | provider | a template: one instance per program, run on a schedule; each row it prints (a JSON array or JSON Lines) becomes an item |
 | `gmail` | provider | a template: one instance per Gmail account, synced on a schedule, each message submitted to Intake (ported from oaken-mail) |
 | `imap` | provider | a template: one instance per IMAP mailbox, synced on a schedule (pull only; the password is in the OS keyring) |
+| `mbox` | provider | a template: one instance per mbox file or folder of them (a Thunderbird profile's mail folders too), synced on a schedule from a byte offset; read-only, confidential by default |
 | `smtp` | provider | a template: one instance per sending account, with `check` and `send` commands (a send is confirmed first) |
 | `ollama` | llm_backend | the system's Ollama as the model backend: it needs no model, it lists the models Ollama has |
 | `ollama` | embedder | embeddings from an Ollama server (it needs a model: that is its own setting) |
@@ -64,7 +65,7 @@ IMAP, SMTP and the formatter's safe mode need libraries, which come as extras: `
 
 The write side of the Gmail and IMAP providers (flag, label, trash, move) is not ported yet. It is part of a provider's shape: a provider extends the contract with its own operations when it loads, and core needs nothing for them. oaken-mail has it.
 
-`oaken-provider-jmap`, `oaken-provider-maildir` and `oaken-provider-mbox` still speak oaken-mail's older plugin API
+`oaken-provider-jmap` and `oaken-provider-maildir` still speak oaken-mail's older plugin API
 (`oaken.plugins`) and sit at the top level of this repository as they were. They join `src/oaken_plugins/` once they are
 ported to Oaken Core.
 
