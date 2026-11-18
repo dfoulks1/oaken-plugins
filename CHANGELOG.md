@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Mail:** `mail.index` and `mail.counts` run from `queries/index.sql` (sqlc) over a new `mail_state` view (migration 0006: a person's label over a machine's, no data rewritten), not SQL built in Python. Same results, checked against a model in `tests/test_mail_index.py`; speed is unchanged, the view is where it gets fixed. `schema/core_labels.sql` is a typing-only stub of core's `labels` table.
+
 ## 1.0.0 (alpha)
 
 The first release of oaken-plugins, for oaken-core 1.0.1 or later in 1.x (`requires_core = ">=1.0.0,<2"`). Each plugin is at its own version, `0.1.0`.

@@ -191,58 +191,18 @@ class IndexOut(BaseModel):
     next: str | None  # pass as ``after`` for the next page; none at the end
 
 
-def _eff(key: str) -> str:
-    """A message's effective value of a label: a person's over a machine's. ``m`` is the message row. Two exact lookups on the primary key."""
-    one = "(SELECT l.value FROM labels l WHERE l.subject_id = m.subject_id AND l.key = '{k}' AND l.layer = '{layer}')"
-    return f"COALESCE({one.format(k=key, layer='human')}, {one.format(k=key, layer='machine')})"
+def _own_json(own: list[str]) -> str:
+    """The owner's addresses as the JSON array the queries read: lowercased, once each. Empty means mail from nobody is sent mail."""
+    return json.dumps(sorted({a.strip().lower() for a in own if a.strip()}))
 
 
-_GONE = f"(COALESCE({_eff('mail.discarded')}, '') = 'true' OR COALESCE({_eff('sieve.disposition')}, '') = 'discarded')"  # a Sieve discard counts as discarded; COALESCE because no label is NULL, and NOT NULL is not true
-_VIEWS = {
-    "all": "1",
-    "inbox": f"(NOT {_GONE} AND COALESCE({_eff('mail.archived')}, '') <> 'true' AND COALESCE({_eff('mail.folder')}, '') = '')",  # filed in a folder is out of the inbox
-    "starred": f"(COALESCE({_eff('mail.starred')}, '') = 'true' AND NOT {_GONE})",
-    "archive": f"(COALESCE({_eff('mail.archived')}, '') = 'true' AND NOT {_GONE})",
-    "discarded": _GONE,
-    "new": f"(NOT {_GONE} AND COALESCE({_eff('mail.archived')}, '') <> 'true' AND m.is_read = 0)",  # every unread, in any folder: what is left to address
-    "sent": f"(NOT {_GONE})",  # with ``own``: what the owner wrote
-}
+def _from_name(headers_json: str) -> str:
+    """The display name in the first From header; none when the headers are not what the ingestor wrote."""
+    try:
+        return parseaddr(json.loads(headers_json)["from"][0] or "")[0]
+    except (ValueError, KeyError, IndexError, TypeError):
+        return ""
 
-
-def _sent(own: list[str]) -> tuple[str, list[str]]:
-    """The test for mail the owner sent: from one of their own addresses. shortcut: by sender, since a sync does not say which mail went out; mail you
-    send to yourself counts as sent. Nothing when no address is given, so a caller that does not know them sees all mail."""
-    mine = sorted({a.strip().lower() for a in own if a.strip()})
-    return (f"LOWER(m.from_addr) IN ({','.join('?' * len(mine))})", mine) if mine else ("0", [])
-
-
-def _like(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-def _where(inp: IndexIn) -> tuple[str, list[Any]]:
-    """The WHERE for a view and its filters. Only fixed fragments and bound values: nothing from the caller is put into the SQL text."""
-    parts, args = [_VIEWS[inp.view]], []
-    sent, mine = _sent(inp.own)
-    parts.append(sent if inp.view == "sent" else f"NOT ({sent})")  # sent mail shows in its own view and nowhere else
-    args += mine
-    if inp.folder:
-        if inp.exact:
-            parts.append(f"(NOT {_GONE} AND {_eff('mail.folder')} = ?)")
-            args.append(inp.folder)
-        else:
-            parts.append(f"(NOT {_GONE} AND ({_eff('mail.folder')} = ? OR {_eff('mail.folder')} LIKE ? ESCAPE '\\'))")
-            args += [inp.folder, _like(inp.folder) + ".%"]
-    if inp.tag:
-        like = "%, " + _like(inp.tag) + ", %"
-        parts.append(f"(NOT {_GONE} AND ((', ' || COALESCE({_eff('sieve.labels')}, '') || ', ') LIKE ? ESCAPE '\\' OR (', ' || COALESCE({_eff('filters.labels')}, '') || ', ') LIKE ? ESCAPE '\\'))")
-        args += [like, like]
-    if inp.unread is not None:
-        parts.append("m.is_read = 0" if inp.unread else "m.is_read = 1")
-    return " AND ".join(parts), args
-
-
-_SORT = "COALESCE(m.sent_at, m.created_at)"
 
 
 class CountsIn(BaseModel):
@@ -364,32 +324,24 @@ class MailIngestor(BaseIngestor):
     async def index(self, ctx: PluginOpContext, inp: IndexIn) -> IndexOut:
         db = self.ctx.db
         assert db is not None
-        where, wargs = _where(inp)
+        q = queries_for(db.engine).index
         at, _, sid = (inp.after or "").partition("|")
-        keyset = f"AND ({_SORT}, m.subject_id) < (?, ?)" if inp.after else ""
-        page = (f"SELECT m.* FROM mail_messages m WHERE {where} {keyset} ORDER BY {_SORT} DESC, m.subject_id DESC LIMIT ? OFFSET ?",
-                [*wargs, *([at, sid] if inp.after else []), inp.limit, 0 if inp.after else inp.offset])
-        sql = f"""SELECT m.subject_id, m.thread_id, m.sent_at, {_SORT} AS sort_at, m.from_addr, json_extract(m.headers_json, '$.from[0]'), m.subject, m.is_read,
-                         (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id), SUBSTR(m.body_clean, 1, 400)
-                  FROM ({page[0]}) m ORDER BY sort_at DESC, m.subject_id DESC"""  # the labels are fetched for the page only
+        ask = {"view": inp.view, "own": _own_json(inp.own), "folder": inp.folder, "folder_exact": int(inp.exact), "folder_prefix": f"{inp.folder}." if inp.folder else None,
+               "tag": inp.tag, "is_read": None if inp.unread is None else int(not inp.unread)}
         rows: list[IndexRow] = []
         async with db.reading() as conn:
-            async with conn.execute(sql, page[1]) as cur:
-                async for r in cur:
-                    rows.append(IndexRow(subject_id=r[0], thread_id=r[1], sent_at=r[2], sort_at=r[3], from_addr=r[4], from_name=parseaddr(r[5] or "")[0], subject=r[6],
-                                         is_read=bool(r[7]), attachments=int(r[8]), snippet=re.sub(r"\s+", " ", r[9] or "").strip()[:160], labels={}))
+            async for r in q.index_page(conn, **ask, after_sort=at if inp.after else None, after_id=sid if inp.after else None, page_offset=0 if inp.after else inp.offset, page_limit=inp.limit):
+                rows.append(IndexRow(subject_id=r.subject_id, thread_id=r.thread_id, sent_at=r.sent_at, sort_at=r.sort_at, from_addr=r.from_addr, from_name=_from_name(r.headers_json),
+                                     subject=r.subject, is_read=bool(r.is_read), attachments=int(r.attachments), snippet=re.sub(r"\s+", " ", r.snippet or "").strip()[:160], labels={}))
             by_id = {r.subject_id: r for r in rows}
             ids = list(by_id)
             for i in range(0, len(ids), 500):  # one query for the page's labels, a person's over a machine's
-                chunk = ids[i : i + 500]
-                async with conn.execute(f"SELECT subject_id, key, layer, value FROM labels WHERE subject_id IN ({','.join('?' * len(chunk))}) ORDER BY layer DESC", chunk) as cur:
-                    async for sid, key, _layer, value in cur:  # 'machine' sorts after 'human' descending-wise: the person's value is written last and wins
-                        by_id[sid].labels[key] = value
+                async for lab in q.list_page_labels(conn, ids=ids[i : i + 500]):  # the person's value is read last and wins
+                    by_id[lab.subject_id].labels[lab.key] = lab.value
             if inp.view == "all" and not (inp.folder or inp.tag or inp.unread is not None):
                 total = int(await queries_for(db.engine).messages.count_messages(conn) or 0)
             else:
-                async with conn.execute(f"SELECT COUNT(*) FROM mail_messages m WHERE {where}", wargs) as cur:
-                    total = int((await cur.fetchone())[0])  # type: ignore[index]
+                total = int(await q.index_count(conn, **ask) or 0)
         return IndexOut(total=total, rows=rows, next=f"{rows[-1].sort_at}|{rows[-1].subject_id}" if len(rows) == inp.limit else None)
 
     @command("counts", "What a sidebar shows: unread in Inbox, Starred, Archive and Discarded, and every folder and tag with how many and how many unread.",
@@ -397,30 +349,25 @@ class MailIngestor(BaseIngestor):
     async def counts(self, ctx: PluginOpContext, inp: CountsIn) -> CountsOut:
         db = self.ctx.db
         assert db is not None
+        q = queries_for(db.engine).index
+        own = _own_json(inp.own)
         sys_counts: dict[str, int] = {}
         folders: dict[str, list[int]] = {}
         tags: dict[str, list[int]] = {}
         async with db.reading() as conn:
-            sent, mine = _sent(inp.own)
             for view in ("inbox", "starred", "archive", "discarded", "new"):
-                async with conn.execute(f"SELECT COUNT(*) FROM mail_messages m WHERE m.is_read = 0 AND {_VIEWS[view]} AND NOT ({sent})", mine) as cur:
-                    sys_counts[view] = int((await cur.fetchone())[0])  # type: ignore[index]
-            # only messages that carry the label are visited: the filed ones, not the whole store
-            sql = ("SELECT m.is_read, {f}, {t1}, {t2} FROM mail_messages m WHERE NOT {gone} AND m.subject_id IN "
-                   "(SELECT subject_id FROM labels WHERE key IN ('mail.folder', 'sieve.labels', 'filters.labels')) AND NOT ({sent})").format(
-                f=_eff("mail.folder"), t1=_eff("sieve.labels"), t2=_eff("filters.labels"), gone=_GONE, sent=sent)
-            async with conn.execute(sql, mine) as cur:
-                async for is_read, folder, t1, t2 in cur:
-                    unread = 0 if is_read else 1
-                    parts = (folder or "").split(".") if folder else []
-                    for i in range(1, len(parts) + 1):
-                        n = folders.setdefault(".".join(parts[:i]), [0, 0])
-                        n[0] += 1
-                        n[1] += unread
-                    for name in {x.strip() for v in (t1, t2) if v for x in v.split(",") if x.strip()}:
-                        n = tags.setdefault(name, [0, 0])
-                        n[0] += 1
-                        n[1] += unread
+                sys_counts[view] = int(await q.index_count(conn, view=view, own=own, folder=None, folder_exact=0, folder_prefix=None, tag=None, is_read=0) or 0)
+            async for r in q.list_filed_state(conn, own=own):  # only messages that carry the label are visited: the filed ones, not the whole store
+                unread = 0 if r.is_read else 1
+                parts = r.folder.split(".") if r.folder else []
+                for i in range(1, len(parts) + 1):
+                    n = folders.setdefault(".".join(parts[:i]), [0, 0])
+                    n[0] += 1
+                    n[1] += unread
+                for name in {x.strip() for v in (r.sieve_labels, r.filters_labels) if v for x in v.split(",") if x.strip()}:
+                    n = tags.setdefault(name, [0, 0])
+                    n[0] += 1
+                    n[1] += unread
         return CountsOut(**sys_counts, folders=folders, tags=tags)
 
     def labels(self) -> list[BaseLabel]:
