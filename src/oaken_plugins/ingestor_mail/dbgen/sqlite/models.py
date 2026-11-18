@@ -5,8 +5,12 @@
 from __future__ import annotations
 
 __all__: collections.abc.Sequence[str] = (
+    "Label",
     "MailAttachment",
+    "MailFlag",
     "MailMessage",
+    "MailState",
+    "MailTag",
 )
 
 import dataclasses
@@ -17,6 +21,17 @@ if typing.TYPE_CHECKING:
 
 
 @dataclasses.dataclass()
+class Label:
+    subject_id: str
+    key: str
+    layer: str
+    value: str
+    actor_kind: str
+    actor: str
+    at: str
+
+
+@dataclasses.dataclass()
 class MailAttachment:
     subject_id: str
     n: int
@@ -24,6 +39,19 @@ class MailAttachment:
     content_type: str
     size: int
     sha256: str | None
+
+
+@dataclasses.dataclass()
+class MailFlag:
+    subject_id: str
+    sort_at: str
+    is_read: int
+    from_lc: str
+    is_gone: int
+    is_archived: int
+    is_starred: int
+    folder: str | None
+    stale: int
 
 
 @dataclasses.dataclass()
@@ -43,3 +71,21 @@ class MailMessage:
     body_clean: str
     is_read: int
     item_key: str | None
+
+
+@dataclasses.dataclass()
+class MailState:
+    subject_id: str
+    is_gone: int
+    is_archived: int
+    is_starred: int
+    folder: typing.Any | None
+    sieve_labels: typing.Any | None
+    filters_labels: typing.Any | None
+
+
+@dataclasses.dataclass()
+class MailTag:
+    subject_id: str
+    tag: str
+    tag_lc: str
