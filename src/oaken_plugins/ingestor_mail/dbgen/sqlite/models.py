@@ -7,8 +7,10 @@ from __future__ import annotations
 __all__: collections.abc.Sequence[str] = (
     "Label",
     "MailAttachment",
+    "MailFlag",
     "MailMessage",
     "MailState",
+    "MailTag",
 )
 
 import dataclasses
@@ -40,6 +42,19 @@ class MailAttachment:
 
 
 @dataclasses.dataclass()
+class MailFlag:
+    subject_id: str
+    sort_at: str
+    is_read: int
+    from_lc: str
+    is_gone: int
+    is_archived: int
+    is_starred: int
+    folder: str | None
+    stale: int
+
+
+@dataclasses.dataclass()
 class MailMessage:
     subject_id: str
     message_id: str
@@ -67,3 +82,10 @@ class MailState:
     folder: typing.Any | None
     sieve_labels: typing.Any | None
     filters_labels: typing.Any | None
+
+
+@dataclasses.dataclass()
+class MailTag:
+    subject_id: str
+    tag: str
+    tag_lc: str

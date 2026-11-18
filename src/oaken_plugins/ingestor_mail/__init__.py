@@ -191,6 +191,9 @@ class IndexOut(BaseModel):
     next: str | None  # pass as ``after`` for the next page; none at the end
 
 
+_TOP = "\x7f"  # sorts after any time: where a walk by key starts
+
+
 def _own_json(own: list[str]) -> str:
     """The owner's addresses as the JSON array the queries read: lowercased, once each. Empty means mail from nobody is sent mail."""
     return json.dumps(sorted({a.strip().lower() for a in own if a.strip()}))
@@ -325,12 +328,26 @@ class MailIngestor(BaseIngestor):
         db = self.ctx.db
         assert db is not None
         q = queries_for(db.engine).index
+        own = _own_json(inp.own)
         at, _, sid = (inp.after or "").partition("|")
-        ask = {"view": inp.view, "own": _own_json(inp.own), "folder": inp.folder, "folder_exact": int(inp.exact), "folder_prefix": f"{inp.folder}." if inp.folder else None,
-               "tag": inp.tag, "is_read": None if inp.unread is None else int(not inp.unread)}
-        rows: list[IndexRow] = []
+        walk = {"after_sort": at if inp.after else _TOP, "after_id": sid if inp.after else _TOP, "page_offset": 0 if inp.after else inp.offset, "page_limit": inp.limit}
+        read = None if inp.unread is None else int(not inp.unread)
+        tag = inp.tag.strip().lower() if inp.tag else None
         async with db.reading() as conn:
-            async for r in q.index_page(conn, **ask, after_sort=at if inp.after else None, after_id=sid if inp.after else None, page_offset=0 if inp.after else inp.offset, page_limit=inp.limit):
+            if inp.folder:  # a folder (and the ones below it), perhaps with a tag
+                f = {"folder": inp.folder, "folder_prefix": "" if inp.exact else f"{inp.folder}.", "folder_prefix_end": "" if inp.exact else f"{inp.folder}/", "view": inp.view, "own": own, "tag": tag, "is_read": read}
+                page, count = q.index_page_folder(conn, **f, **walk), lambda: q.index_count_folder(conn, **f)
+            elif tag:
+                f = {"tag": tag, "view": inp.view, "own": own, "is_read": read}
+                page, count = q.index_page_tag(conn, **f, **walk), lambda: q.index_count_tag(conn, **f)
+            elif read is not None:
+                f = {"view": inp.view, "own": own, "is_read": read}
+                page, count = q.index_page_any(conn, **f, **walk), lambda: q.index_count_any(conn, **f)
+            else:  # the plain views: a page from the view's own index, the total from one pass over the narrow table
+                page = getattr(q, f"index_page_{inp.view}")(conn, own=own, **walk)
+                count = (lambda: q.count_flags(conn)) if inp.view == "all" else (lambda: getattr(q, f"count_{inp.view}")(conn, own=own))  # all counts every message, sent mail too
+            rows: list[IndexRow] = []
+            async for r in page:
                 rows.append(IndexRow(subject_id=r.subject_id, thread_id=r.thread_id, sent_at=r.sent_at, sort_at=r.sort_at, from_addr=r.from_addr, from_name=_from_name(r.headers_json),
                                      subject=r.subject, is_read=bool(r.is_read), attachments=int(r.attachments), snippet=re.sub(r"\s+", " ", r.snippet or "").strip()[:160], labels={}))
             by_id = {r.subject_id: r for r in rows}
@@ -338,10 +355,7 @@ class MailIngestor(BaseIngestor):
             for i in range(0, len(ids), 500):  # one query for the page's labels, a person's over a machine's
                 async for lab in q.list_page_labels(conn, ids=ids[i : i + 500]):  # the person's value is read last and wins
                     by_id[lab.subject_id].labels[lab.key] = lab.value
-            if inp.view == "all" and not (inp.folder or inp.tag or inp.unread is not None):
-                total = int(await queries_for(db.engine).messages.count_messages(conn) or 0)
-            else:
-                total = int(await q.index_count(conn, **ask) or 0)
+            total = int(await count() or 0)
         return IndexOut(total=total, rows=rows, next=f"{rows[-1].sort_at}|{rows[-1].subject_id}" if len(rows) == inp.limit else None)
 
     @command("counts", "What a sidebar shows: unread in Inbox, Starred, Archive and Discarded, and every folder and tag with how many and how many unread.",
@@ -351,23 +365,20 @@ class MailIngestor(BaseIngestor):
         assert db is not None
         q = queries_for(db.engine).index
         own = _own_json(inp.own)
-        sys_counts: dict[str, int] = {}
         folders: dict[str, list[int]] = {}
         tags: dict[str, list[int]] = {}
         async with db.reading() as conn:
-            for view in ("inbox", "starred", "archive", "discarded", "new"):
-                sys_counts[view] = int(await q.index_count(conn, view=view, own=own, folder=None, folder_exact=0, folder_prefix=None, tag=None, is_read=0) or 0)
-            async for r in q.list_filed_state(conn, own=own):  # only messages that carry the label are visited: the filed ones, not the whole store
-                unread = 0 if r.is_read else 1
-                parts = r.folder.split(".") if r.folder else []
+            unread = await q.count_unread(conn, own=own)
+            assert unread is not None
+            sys_counts = {v: int(getattr(unread, v)) for v in ("inbox", "starred", "archive", "discarded", "new")}
+            async for r in q.list_folder_census(conn, own=own):  # each folder counts the folders under it
+                parts = r.folder.split(".")
                 for i in range(1, len(parts) + 1):
                     n = folders.setdefault(".".join(parts[:i]), [0, 0])
-                    n[0] += 1
-                    n[1] += unread
-                for name in {x.strip() for v in (r.sieve_labels, r.filters_labels) if v for x in v.split(",") if x.strip()}:
-                    n = tags.setdefault(name, [0, 0])
-                    n[0] += 1
-                    n[1] += unread
+                    n[0] += r.n
+                    n[1] += r.unread
+            async for r in q.list_tag_census(conn, own=own):
+                tags[r.tag] = [r.n, r.unread]
         return CountsOut(**sys_counts, folders=folders, tags=tags)
 
     def labels(self) -> list[BaseLabel]:

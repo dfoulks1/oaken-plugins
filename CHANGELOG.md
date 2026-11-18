@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- **Mail:** `mail.index` and `mail.counts` run from `queries/index.sql` (sqlc) over a new `mail_state` view (migration 0006: a person's label over a machine's, no data rewritten), not SQL built in Python. Same results, checked against a model in `tests/test_mail_index.py`; speed is unchanged, the view is where it gets fixed. `schema/core_labels.sql` is a typing-only stub of core's `labels` table.
+- **Mail:** `mail.index` and `mail.counts` are fast on a big store. They run from `queries/index.sql` (sqlc) against `mail_flags`, a 100-byte-a-row table (migration 0007) that triggers keep equal to the labels and read flags, plus `mail_tags` for tags. A page reads the first rows of its view's partial index; the sidebar's unread counts touch only the unread messages. On 40,000 messages with 14 KB rows: unread page 230 ms to 2 ms, inbox total 167 ms to 8 ms, sidebar 332 ms to 18 ms, tag page 307 ms to 10 ms. Larger and colder stores gain more.
+  The migration backfills every message once (about 2 s per 40,000, longer on a cold disk). Folder names now match without regard to case, exact or not; a tag list is split on commas. `tests/test_mail_index.py` checks the lists and counts against a model and the tables against the labels after random changes. `mail_state` (0006) stays the definition the flags must equal. `schema/core_labels.sql` is a typing-only stub of core's `labels` table.
 
 ## 1.0.0 (alpha)
 

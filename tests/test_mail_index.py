@@ -83,7 +83,7 @@ class Seeded:
             return False
         if ask.get("folder"):
             f, want = self.eff(sid, "mail.folder"), ask["folder"]
-            if self.gone(sid) or f is None or not (f == want or (not ask.get("exact") and f.lower().startswith(want.lower() + "."))):
+            if self.gone(sid) or f is None or not (f.lower() == want.lower() or (not ask.get("exact") and f.lower().startswith(want.lower() + "."))):
                 return False
         if ask.get("tag"):
             lists = [f", {self.eff(sid, k) or ''}, ".lower() for k in ("sieve.labels", "filters.labels")]
@@ -194,3 +194,45 @@ async def test_the_sidebar_counts_unread_per_view_and_every_folder_and_tag(core:
                 n = tags.setdefault(t, [0, 0])
                 n[0], n[1] = n[0] + 1, n[1] + (1 - m["is_read"])
         assert got["folders"] == folders and got["tags"] == tags, own
+
+
+async def agree(core: Core) -> None:
+    """mail_flags and mail_tags equal what mail_state (the labels) and mail_messages say."""
+    db = core.host.get("ingestor").ctx.db
+    flags = {r["subject_id"]: tuple(r)[1:] for r in await db.fetchall("SELECT subject_id, sort_at, is_read, from_lc, is_gone, is_archived, is_starred, folder, stale FROM mail_flags")}
+    want = {r["subject_id"]: (r["sort_at"], r["is_read"], r["from_lc"], r["is_gone"], r["is_archived"], r["is_starred"], r["folder"], 0) for r in await db.fetchall(
+        "SELECT m.subject_id, COALESCE(m.sent_at, m.created_at) AS sort_at, m.is_read, LOWER(m.from_addr) AS from_lc, s.is_gone, s.is_archived, s.is_starred, NULLIF(s.folder, '') AS folder "
+        "FROM mail_messages m JOIN mail_state s ON s.subject_id = m.subject_id")}
+    assert flags == want
+    tags = {(r["subject_id"], r["tag"]) for r in await db.fetchall("SELECT subject_id, tag FROM mail_tags")}
+    expect = {(r["subject_id"], t.strip()) for r in await db.fetchall("SELECT subject_id, sieve_labels, filters_labels FROM mail_state")
+              for v in (r["sieve_labels"], r["filters_labels"]) if v for t in v.split(",") if t.strip()}
+    assert tags == expect
+
+
+async def test_the_narrow_tables_follow_every_label_and_message_change(core: Core) -> None:
+    data = await seed(core)
+    db = core.host.get("ingestor").ctx.db
+    await agree(core)  # the backfill and the arrival trigger agree with the labels
+    rnd = random.Random(11)
+    ids = list(data.msgs)
+    keys = ("mail.discarded", "sieve.disposition", "mail.archived", "mail.starred", "mail.folder", "sieve.labels", "filters.labels", "triage.priority")
+    for _ in range(300):
+        sid, key, layer = rnd.choice(ids), rnd.choice(keys), rnd.choice(("human", "machine"))
+        op = rnd.choice(("set", "set", "delete", "read", "unread"))
+        if op == "set":
+            value = rnd.choice(("true", "false", "discarded", "", "ASF", "ASF.infra", 'Dev, "ops", a\\b', "x,,y", "tab\there, nl\nthere", "3"))
+            await db.execute("INSERT INTO labels (subject_id, key, layer, value, actor_kind, actor, at) VALUES (?,?,?,?,'test','','t') ON CONFLICT (subject_id, key, layer) DO UPDATE SET value = excluded.value", (sid, key, layer, value))
+        elif op == "delete":
+            await db.execute("DELETE FROM labels WHERE subject_id = ? AND key = ? AND layer = ?", (sid, key, layer))
+        else:
+            await db.execute("UPDATE mail_messages SET is_read = ? WHERE subject_id = ?", (int(op == "read"), sid))
+    await agree(core)
+    await db.execute("DELETE FROM mail_messages WHERE subject_id IN (?, ?, ?)", tuple(ids[:3]))  # a purge takes the rows with it
+    await db.execute("DELETE FROM labels WHERE subject_id IN (?, ?, ?)", tuple(ids[:3]))
+    await agree(core)
+    assert not await db.fetchall("SELECT 1 FROM mail_tags WHERE subject_id IN (?, ?, ?)", tuple(ids[:3]))
+    await db.execute(
+        "INSERT INTO mail_messages (subject_id, message_id, thread_id, source, subject, from_addr, sent_at, headers_json, created_at, is_read) VALUES ('late','<late@t>','late','imap','s','Late@X.test',NULL,'{}','2026-11-09T00:00:00Z',0)")
+    await db.execute("INSERT INTO labels (subject_id, key, layer, value, actor_kind, actor, at) VALUES ('late','mail.folder','machine','ASF','test','','t')")
+    await agree(core)

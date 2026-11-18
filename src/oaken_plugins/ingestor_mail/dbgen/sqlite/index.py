@@ -6,14 +6,45 @@
 from __future__ import annotations
 
 __all__: collections.abc.Sequence[str] = (
-    "IndexPageRow",
-    "ListFiledStateRow",
+    "CountUnreadRow",
+    "IndexPageAllRow",
+    "IndexPageAnyRow",
+    "IndexPageArchiveRow",
+    "IndexPageDiscardedRow",
+    "IndexPageFolderRow",
+    "IndexPageInboxRow",
+    "IndexPageNewRow",
+    "IndexPageSentRow",
+    "IndexPageStarredRow",
+    "IndexPageTagRow",
+    "ListFolderCensusRow",
     "ListPageLabelsRow",
+    "ListTagCensusRow",
     "QueryResults",
-    "index_count",
-    "index_page",
-    "list_filed_state",
+    "count_archive",
+    "count_discarded",
+    "count_flags",
+    "count_inbox",
+    "count_new",
+    "count_sent",
+    "count_starred",
+    "count_unread",
+    "index_count_any",
+    "index_count_folder",
+    "index_count_tag",
+    "index_page_all",
+    "index_page_any",
+    "index_page_archive",
+    "index_page_discarded",
+    "index_page_folder",
+    "index_page_inbox",
+    "index_page_new",
+    "index_page_sent",
+    "index_page_starred",
+    "index_page_tag",
+    "list_folder_census",
     "list_page_labels",
+    "list_tag_census",
 )
 
 import dataclasses
@@ -28,7 +59,7 @@ if typing.TYPE_CHECKING:
 
 
 @dataclasses.dataclass()
-class IndexPageRow:
+class IndexPageAllRow:
     subject_id: str
     thread_id: str
     sent_at: str | None
@@ -42,6 +73,155 @@ class IndexPageRow:
 
 
 @dataclasses.dataclass()
+class IndexPageInboxRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageStarredRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageArchiveRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageDiscardedRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageNewRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageSentRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageAnyRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageFolderRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class IndexPageTagRow:
+    subject_id: str
+    thread_id: str
+    sent_at: str | None
+    sort_at: str
+    from_addr: str
+    headers_json: str
+    subject: str
+    is_read: int
+    attachments: int
+    snippet: str
+
+
+@dataclasses.dataclass()
+class CountUnreadRow:
+    inbox: int
+    starred: int
+    archive: int
+    discarded: int
+    new: int
+
+
+@dataclasses.dataclass()
+class ListFolderCensusRow:
+    folder: str | None
+    n: int
+    unread: int
+
+
+@dataclasses.dataclass()
+class ListTagCensusRow:
+    tag: str
+    n: int
+    unread: int
+
+
+@dataclasses.dataclass()
 class ListPageLabelsRow:
     subject_id: str
     key: str
@@ -49,78 +229,295 @@ class ListPageLabelsRow:
     value: str
 
 
-@dataclasses.dataclass()
-class ListFiledStateRow:
-    is_read: int
-    folder: typing.Any | None
-    sieve_labels: typing.Any | None
-    filters_labels: typing.Any | None
-
-
-INDEX_PAGE: typing.Final[str] = """-- name: IndexPage :many
+INDEX_PAGE_ALL: typing.Final[str] = """-- name: IndexPageAll :many
 
 WITH page AS (
-    SELECT m.subject_id, m.thread_id, m.sent_at, COALESCE(m.sent_at, m.created_at) AS sort_at,
-           m.from_addr, m.headers_json, m.subject, m.is_read, m.body_clean
-    FROM mail_messages m JOIN mail_state s ON s.subject_id = m.subject_id
-    WHERE (?1 = 'all'
-           OR (?1 = 'inbox' AND s.is_gone = 0 AND s.is_archived = 0 AND COALESCE(s.folder, '') = '')
-           OR (?1 = 'starred' AND s.is_starred = 1 AND s.is_gone = 0)
-           OR (?1 = 'archive' AND s.is_archived = 1 AND s.is_gone = 0)
-           OR (?1 = 'discarded' AND s.is_gone = 1)
-           OR (?1 = 'new' AND s.is_gone = 0 AND s.is_archived = 0 AND m.is_read = 0)
-           OR (?1 = 'sent' AND s.is_gone = 0))
-      AND ((?1 = 'sent') = (LOWER(m.from_addr) IN (SELECT j.value FROM json_each(?2) j)))
-      AND (?3 IS NULL
-           OR (s.is_gone = 0 AND (s.folder = ?3
-                                  OR (?4 = 0 AND LOWER(SUBSTR(s.folder, 1, LENGTH(?5))) = LOWER(?5)))))
-      AND (?6 IS NULL
-           OR (s.is_gone = 0 AND (INSTR(LOWER(', ' || COALESCE(s.sieve_labels, '') || ', '), LOWER(', ' || ?6 || ', ')) > 0
-                                  OR INSTR(LOWER(', ' || COALESCE(s.filters_labels, '') || ', '), LOWER(', ' || ?6 || ', ')) > 0)))
-      AND (?7 IS NULL OR m.is_read = ?7)
-      AND (?8 IS NULL
-           OR COALESCE(m.sent_at, m.created_at) < ?8
-           OR (COALESCE(m.sent_at, m.created_at) = ?8 AND m.subject_id < ?9))
-    ORDER BY sort_at DESC, m.subject_id DESC
-    LIMIT ?11 OFFSET ?10
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_all
+    WHERE f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
 )
-SELECT p.subject_id, p.thread_id, p.sent_at, p.sort_at, p.from_addr, p.headers_json, p.subject, p.is_read,
-       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = p.subject_id) AS attachments,
-       SUBSTR(p.body_clean, 1, 400) AS snippet
-FROM page p
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
 ORDER BY p.sort_at DESC, p.subject_id DESC
 """
 
-INDEX_COUNT: typing.Final[str] = """-- name: IndexCount :one
-SELECT COUNT(*) AS n
-FROM mail_messages m JOIN mail_state s ON s.subject_id = m.subject_id
+INDEX_PAGE_INBOX: typing.Final[str] = """-- name: IndexPageInbox :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_inbox
+    WHERE f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL
+      AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_STARRED: typing.Final[str] = """-- name: IndexPageStarred :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_starred
+    WHERE f.is_starred = 1 AND f.is_gone = 0
+      AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_ARCHIVE: typing.Final[str] = """-- name: IndexPageArchive :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_archive
+    WHERE f.is_archived = 1 AND f.is_gone = 0
+      AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_DISCARDED: typing.Final[str] = """-- name: IndexPageDiscarded :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_discarded
+    WHERE f.is_gone = 1
+      AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_NEW: typing.Final[str] = """-- name: IndexPageNew :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_new
+    WHERE f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0
+      AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_SENT: typing.Final[str] = """-- name: IndexPageSent :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f INDEXED BY mail_flags_live
+    WHERE f.is_gone = 0
+      AND f.from_lc IN (SELECT j.value FROM json_each(?1) j)
+      AND (f.sort_at, f.subject_id) < (?2, ?3)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?5 OFFSET ?4
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_PAGE_ANY: typing.Final[str] = """-- name: IndexPageAny :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f
+    WHERE (?1 = 'all'
+           OR (?1 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?1 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?1 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?1 = 'discarded' AND f.is_gone = 1)
+           OR (?1 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?1 = 'sent' AND f.is_gone = 0))
+      AND ((?1 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?2) j)))
+      AND (?3 IS NULL OR f.is_read = ?3)
+      AND (f.sort_at, f.subject_id) < (?4, ?5)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?7 OFFSET ?6
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_COUNT_ANY: typing.Final[str] = """-- name: IndexCountAny :one
+SELECT COUNT(*) AS n FROM mail_flags f
 WHERE (?1 = 'all'
-       OR (?1 = 'inbox' AND s.is_gone = 0 AND s.is_archived = 0 AND COALESCE(s.folder, '') = '')
-       OR (?1 = 'starred' AND s.is_starred = 1 AND s.is_gone = 0)
-       OR (?1 = 'archive' AND s.is_archived = 1 AND s.is_gone = 0)
-       OR (?1 = 'discarded' AND s.is_gone = 1)
-       OR (?1 = 'new' AND s.is_gone = 0 AND s.is_archived = 0 AND m.is_read = 0)
-       OR (?1 = 'sent' AND s.is_gone = 0))
-  AND ((?1 = 'sent') = (LOWER(m.from_addr) IN (SELECT j.value FROM json_each(?2) j)))
-  AND (?3 IS NULL
-       OR (s.is_gone = 0 AND (s.folder = ?3
-                              OR (?4 = 0 AND LOWER(SUBSTR(s.folder, 1, LENGTH(?5))) = LOWER(?5)))))
-  AND (?6 IS NULL
-       OR (s.is_gone = 0 AND (INSTR(LOWER(', ' || COALESCE(s.sieve_labels, '') || ', '), LOWER(', ' || ?6 || ', ')) > 0
-                              OR INSTR(LOWER(', ' || COALESCE(s.filters_labels, '') || ', '), LOWER(', ' || ?6 || ', ')) > 0)))
-  AND (?7 IS NULL OR m.is_read = ?7)
+           OR (?1 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?1 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?1 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?1 = 'discarded' AND f.is_gone = 1)
+           OR (?1 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?1 = 'sent' AND f.is_gone = 0))
+      AND ((?1 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?2) j)))
+  AND (?3 IS NULL OR f.is_read = ?3)
+"""
+
+INDEX_PAGE_FOLDER: typing.Final[str] = """-- name: IndexPageFolder :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f
+    WHERE f.is_gone = 0 AND (f.folder = ?1 OR (f.folder >= ?2 AND f.folder < ?3))
+      AND (?4 = 'all'
+           OR (?4 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?4 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?4 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?4 = 'discarded' AND f.is_gone = 1)
+           OR (?4 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?4 = 'sent' AND f.is_gone = 0))
+      AND ((?4 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?5) j)))
+      AND (?6 IS NULL OR f.subject_id IN (SELECT t.subject_id FROM mail_tags t WHERE t.tag_lc = ?6))
+      AND (?7 IS NULL OR f.is_read = ?7)
+      AND (f.sort_at, f.subject_id) < (?8, ?9)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?11 OFFSET ?10
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_COUNT_FOLDER: typing.Final[str] = """-- name: IndexCountFolder :one
+SELECT COUNT(*) AS n FROM mail_flags f
+WHERE f.is_gone = 0 AND (f.folder = ?1 OR (f.folder >= ?2 AND f.folder < ?3))
+  AND (?4 = 'all'
+           OR (?4 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?4 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?4 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?4 = 'discarded' AND f.is_gone = 1)
+           OR (?4 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?4 = 'sent' AND f.is_gone = 0))
+      AND ((?4 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?5) j)))
+  AND (?6 IS NULL OR f.subject_id IN (SELECT t.subject_id FROM mail_tags t WHERE t.tag_lc = ?6))
+  AND (?7 IS NULL OR f.is_read = ?7)
+"""
+
+INDEX_PAGE_TAG: typing.Final[str] = """-- name: IndexPageTag :many
+WITH page AS (
+    SELECT f.subject_id, f.sort_at
+    FROM mail_flags f
+    WHERE f.is_gone = 0 AND f.subject_id IN (SELECT t.subject_id FROM mail_tags t WHERE t.tag_lc = ?1)
+      AND (?2 = 'all'
+           OR (?2 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?2 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?2 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?2 = 'discarded' AND f.is_gone = 1)
+           OR (?2 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?2 = 'sent' AND f.is_gone = 0))
+      AND ((?2 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?3) j)))
+      AND (?4 IS NULL OR f.is_read = ?4)
+      AND (f.sort_at, f.subject_id) < (?5, ?6)
+    ORDER BY f.sort_at DESC, f.subject_id DESC
+    LIMIT ?8 OFFSET ?7
+)
+SELECT m.subject_id, m.thread_id, m.sent_at, p.sort_at, m.from_addr, m.headers_json, m.subject, m.is_read,
+       (SELECT COUNT(*) FROM mail_attachments a WHERE a.subject_id = m.subject_id) AS attachments,
+       SUBSTR(m.body_clean, 1, 400) AS snippet
+FROM page p JOIN mail_messages m ON m.subject_id = p.subject_id
+ORDER BY p.sort_at DESC, p.subject_id DESC
+"""
+
+INDEX_COUNT_TAG: typing.Final[str] = """-- name: IndexCountTag :one
+SELECT COUNT(*) AS n FROM mail_flags f
+WHERE f.is_gone = 0 AND f.subject_id IN (SELECT t.subject_id FROM mail_tags t WHERE t.tag_lc = ?1)
+  AND (?2 = 'all'
+           OR (?2 = 'inbox' AND f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL)
+           OR (?2 = 'starred' AND f.is_starred = 1 AND f.is_gone = 0)
+           OR (?2 = 'archive' AND f.is_archived = 1 AND f.is_gone = 0)
+           OR (?2 = 'discarded' AND f.is_gone = 1)
+           OR (?2 = 'new' AND f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0)
+           OR (?2 = 'sent' AND f.is_gone = 0))
+      AND ((?2 = 'sent') = (f.from_lc IN (SELECT j.value FROM json_each(?3) j)))
+  AND (?4 IS NULL OR f.is_read = ?4)
+"""
+
+COUNT_FLAGS: typing.Final[str] = """-- name: CountFlags :one
+SELECT COUNT(*) AS n FROM mail_flags
+"""
+
+COUNT_INBOX: typing.Final[str] = """-- name: CountInbox :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_inbox WHERE f.is_gone = 0 AND f.is_archived = 0 AND f.folder IS NULL AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_STARRED: typing.Final[str] = """-- name: CountStarred :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_starred WHERE f.is_starred = 1 AND f.is_gone = 0 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_ARCHIVE: typing.Final[str] = """-- name: CountArchive :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_archive WHERE f.is_archived = 1 AND f.is_gone = 0 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_DISCARDED: typing.Final[str] = """-- name: CountDiscarded :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_discarded WHERE f.is_gone = 1 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_NEW: typing.Final[str] = """-- name: CountNew :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_new WHERE f.is_gone = 0 AND f.is_archived = 0 AND f.is_read = 0 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_SENT: typing.Final[str] = """-- name: CountSent :one
+SELECT COUNT(*) AS n FROM mail_flags f INDEXED BY mail_flags_live WHERE f.is_gone = 0 AND f.from_lc IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+COUNT_UNREAD: typing.Final[str] = """-- name: CountUnread :one
+SELECT CAST(COALESCE(SUM(is_gone = 0 AND is_archived = 0 AND folder IS NULL), 0) AS INTEGER) AS inbox,
+       CAST(COALESCE(SUM(is_starred = 1 AND is_gone = 0), 0) AS INTEGER) AS starred,
+       CAST(COALESCE(SUM(is_archived = 1 AND is_gone = 0), 0) AS INTEGER) AS archive,
+       CAST(COALESCE(SUM(is_gone = 1), 0) AS INTEGER) AS discarded,
+       CAST(COALESCE(SUM(is_gone = 0 AND is_archived = 0), 0) AS INTEGER) AS new
+FROM mail_flags INDEXED BY mail_flags_unread WHERE is_read = 0 AND from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+"""
+
+LIST_FOLDER_CENSUS: typing.Final[str] = """-- name: ListFolderCensus :many
+SELECT f.folder AS folder, COUNT(*) AS n, CAST(COALESCE(SUM(f.is_read = 0), 0) AS INTEGER) AS unread
+FROM mail_flags f
+WHERE f.folder IS NOT NULL AND f.is_gone = 0 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+GROUP BY f.folder COLLATE BINARY
+"""
+
+LIST_TAG_CENSUS: typing.Final[str] = """-- name: ListTagCensus :many
+SELECT t.tag AS tag, COUNT(*) AS n, CAST(COALESCE(SUM(f.is_read = 0), 0) AS INTEGER) AS unread
+FROM mail_tags t CROSS JOIN mail_flags f ON f.subject_id = t.subject_id  -- CROSS JOIN: read the tags, look each message up
+WHERE f.is_gone = 0 AND f.from_lc NOT IN (SELECT j.value FROM json_each(?1) j)
+GROUP BY t.tag
 """
 
 LIST_PAGE_LABELS: typing.Final[str] = """-- name: ListPageLabels :many
 SELECT subject_id, key, layer, value FROM labels WHERE subject_id IN (/*SLICE:ids*/?) ORDER BY layer DESC
-"""
-
-LIST_FILED_STATE: typing.Final[str] = """-- name: ListFiledState :many
-SELECT m.is_read, s.folder, s.sieve_labels, s.filters_labels
-FROM mail_messages m JOIN mail_state s ON s.subject_id = m.subject_id
-WHERE s.is_gone = 0
-  AND m.subject_id IN (SELECT subject_id FROM labels WHERE key IN ('mail.folder', 'sieve.labels', 'filters.labels'))
-  AND LOWER(m.from_addr) NOT IN (SELECT j.value FROM json_each(?1) j)
 """
 
 
@@ -166,32 +563,179 @@ class QueryResults[T]:
         return self._decode_hook(record)
 
 
-def index_page(
-    conn: aiosqlite.Connection,
-    *,
-    view: typing.Any | None,
-    own: typing.Any,
-    folder: typing.Any | None,
-    folder_exact: typing.Any | None,
-    folder_prefix: typing.Any | None,
-    tag: typing.Any | None,
-    is_read: typing.Any | None,
-    after_sort: typing.Any | None,
-    after_id: str | None,
-    page_offset: int,
-    page_limit: int,
-) -> QueryResults[IndexPageRow]:
-    def _decode_hook(row: sqlite3.Row) -> IndexPageRow:
-        return IndexPageRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+def index_page_all(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageAllRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageAllRow:
+        return IndexPageAllRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
 
-    return QueryResults(conn, INDEX_PAGE, _decode_hook, view, own, folder, folder_exact, folder_prefix, tag, is_read, after_sort, after_id, page_offset, page_limit)
+    return QueryResults(conn, INDEX_PAGE_ALL, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
 
 
-async def index_count(conn: aiosqlite.Connection, *, view: typing.Any | None, own: typing.Any, folder: typing.Any | None, folder_exact: typing.Any | None, folder_prefix: typing.Any | None, tag: typing.Any | None, is_read: typing.Any | None) -> int | None:
-    row = await (await conn.execute(INDEX_COUNT, (view, own, folder, folder_exact, folder_prefix, tag, is_read))).fetchone()
+def index_page_inbox(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageInboxRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageInboxRow:
+        return IndexPageInboxRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_INBOX, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_starred(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageStarredRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageStarredRow:
+        return IndexPageStarredRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_STARRED, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_archive(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageArchiveRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageArchiveRow:
+        return IndexPageArchiveRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_ARCHIVE, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_discarded(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageDiscardedRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageDiscardedRow:
+        return IndexPageDiscardedRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_DISCARDED, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_new(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageNewRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageNewRow:
+        return IndexPageNewRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_NEW, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_sent(conn: aiosqlite.Connection, *, own: typing.Any, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageSentRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageSentRow:
+        return IndexPageSentRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_SENT, _decode_hook, own, after_sort, after_id, page_offset, page_limit)
+
+
+def index_page_any(conn: aiosqlite.Connection, *, view: typing.Any | None, own: typing.Any, is_read: typing.Any | None, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageAnyRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageAnyRow:
+        return IndexPageAnyRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_ANY, _decode_hook, view, own, is_read, after_sort, after_id, page_offset, page_limit)
+
+
+async def index_count_any(conn: aiosqlite.Connection, *, view: typing.Any | None, own: typing.Any, is_read: typing.Any | None) -> int | None:
+    row = await (await conn.execute(INDEX_COUNT_ANY, (view, own, is_read))).fetchone()
     if row is None:
         return None
     return row[0]
+
+
+def index_page_folder(
+    conn: aiosqlite.Connection,
+    *,
+    folder: str | None,
+    folder_prefix: str | None,
+    folder_prefix_end: str | None,
+    view: typing.Any | None,
+    own: typing.Any,
+    tag: typing.Any | None,
+    is_read: typing.Any | None,
+    after_sort: str,
+    after_id: str,
+    page_offset: int,
+    page_limit: int,
+) -> QueryResults[IndexPageFolderRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageFolderRow:
+        return IndexPageFolderRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_FOLDER, _decode_hook, folder, folder_prefix, folder_prefix_end, view, own, tag, is_read, after_sort, after_id, page_offset, page_limit)
+
+
+async def index_count_folder(conn: aiosqlite.Connection, *, folder: str | None, folder_prefix: str | None, folder_prefix_end: str | None, view: typing.Any | None, own: typing.Any, tag: typing.Any | None, is_read: typing.Any | None) -> int | None:
+    row = await (await conn.execute(INDEX_COUNT_FOLDER, (folder, folder_prefix, folder_prefix_end, view, own, tag, is_read))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+def index_page_tag(conn: aiosqlite.Connection, *, tag: str | None, view: typing.Any | None, own: typing.Any, is_read: typing.Any | None, after_sort: str, after_id: str, page_offset: int, page_limit: int) -> QueryResults[IndexPageTagRow]:
+    def _decode_hook(row: sqlite3.Row) -> IndexPageTagRow:
+        return IndexPageTagRow(subject_id=row[0], thread_id=row[1], sent_at=row[2], sort_at=row[3], from_addr=row[4], headers_json=row[5], subject=row[6], is_read=row[7], attachments=row[8], snippet=row[9])
+
+    return QueryResults(conn, INDEX_PAGE_TAG, _decode_hook, tag, view, own, is_read, after_sort, after_id, page_offset, page_limit)
+
+
+async def index_count_tag(conn: aiosqlite.Connection, *, tag: str | None, view: typing.Any | None, own: typing.Any, is_read: typing.Any | None) -> int | None:
+    row = await (await conn.execute(INDEX_COUNT_TAG, (tag, view, own, is_read))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_flags(conn: aiosqlite.Connection) -> int | None:
+    row = await (await conn.execute(COUNT_FLAGS)).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_inbox(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_INBOX, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_starred(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_STARRED, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_archive(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_ARCHIVE, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_discarded(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_DISCARDED, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_new(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_NEW, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_sent(conn: aiosqlite.Connection, *, own: typing.Any) -> int | None:
+    row = await (await conn.execute(COUNT_SENT, (own,))).fetchone()
+    if row is None:
+        return None
+    return row[0]
+
+
+async def count_unread(conn: aiosqlite.Connection, *, own: typing.Any) -> CountUnreadRow | None:
+    row = await (await conn.execute(COUNT_UNREAD, (own,))).fetchone()
+    if row is None:
+        return None
+    return CountUnreadRow(inbox=row[0], starred=row[1], archive=row[2], discarded=row[3], new=row[4])
+
+
+def list_folder_census(conn: aiosqlite.Connection, *, own: typing.Any) -> QueryResults[ListFolderCensusRow]:
+    def _decode_hook(row: sqlite3.Row) -> ListFolderCensusRow:
+        return ListFolderCensusRow(folder=row[0], n=row[1], unread=row[2])
+
+    return QueryResults(conn, LIST_FOLDER_CENSUS, _decode_hook, own)
+
+
+def list_tag_census(conn: aiosqlite.Connection, *, own: typing.Any) -> QueryResults[ListTagCensusRow]:
+    def _decode_hook(row: sqlite3.Row) -> ListTagCensusRow:
+        return ListTagCensusRow(tag=row[0], n=row[1], unread=row[2])
+
+    return QueryResults(conn, LIST_TAG_CENSUS, _decode_hook, own)
 
 
 def list_page_labels(conn: aiosqlite.Connection, *, ids: collections.abc.Sequence[str]) -> QueryResults[ListPageLabelsRow]:
@@ -200,10 +744,3 @@ def list_page_labels(conn: aiosqlite.Connection, *, ids: collections.abc.Sequenc
 
     sql = LIST_PAGE_LABELS.replace("/*SLICE:ids*/?", ",".join("?" * len(ids)) or "NULL", 1)
     return QueryResults(conn, sql, _decode_hook, *ids)
-
-
-def list_filed_state(conn: aiosqlite.Connection, *, own: typing.Any) -> QueryResults[ListFiledStateRow]:
-    def _decode_hook(row: sqlite3.Row) -> ListFiledStateRow:
-        return ListFiledStateRow(is_read=row[0], folder=row[1], sieve_labels=row[2], filters_labels=row[3])
-
-    return QueryResults(conn, LIST_FILED_STATE, _decode_hook, own)
