@@ -2,7 +2,7 @@
 from oaken_core.plugins import catalog
 from test_catalog_declared import KINDS
 
-MAIL = {("provider", "gmail"), ("provider", "imap"), ("provider", "smtp"), ("formatter", "rfc822"), ("ingestor", "mail"), ("triager", "sieve"),
+MAIL = {("provider", "gmail"), ("provider", "imap"), ("provider", "jmap"), ("provider", "maildir"), ("provider", "mbox"), ("provider", "smtp"), ("formatter", "rfc822"), ("ingestor", "mail"), ("triager", "sieve"),
         ("triager", "filters"), ("triager", "spamfilter"), ("enricher", "sentiment")}  # fmt: skip
 
 

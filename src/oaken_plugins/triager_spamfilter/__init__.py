@@ -9,7 +9,7 @@ weight to a score; your own ``phrases`` add more. ``allow_senders`` are never sc
 Results are labels on the message: ``spamfilter.verdict`` (allowed, suspect or junk), ``spamfilter.score`` and ``spamfilter.reasons``.
 It reads headers and text only, and only the first 20,000 characters of text.
 
-What counts as junk, check by check: docs/spamfilter.md (a test keeps it in step with the code).
+What counts as junk, check by check: src/oaken_plugins/triager_spamfilter/docs/spamfilter.md (a test keeps it in step with the code).
 """
 
 from email.parser import HeaderParser

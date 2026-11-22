@@ -25,8 +25,9 @@ surfaces plainly rather than misbehaving.
    console renders it on the plugin's page. Write what it is for in the class docstring, how to set it up in `setup_help`, a
    working snippet in `config_example`, and describe every setting with `Field(description=...)` on its `config_model`.
    A `BaseTemplatePlugin` also says what an instance must be given in `contextual`.
-2. `tests/test_<kind>_<name>.py`, and `prompts/<kind>_<name>/00-context.md`
-   when you built it with a model (numbered, `00-context.md` first, so the record of how it was built lives with it).
+2. `src/oaken_plugins/<kind>_<name>/tests/`, and `docs/decisions/` and `docs/prompts/` beside it, each with an `index.md`
+   listing what is there. When you built it with a model, its prompts go in `docs/prompts/` (numbered, `00-context.md`
+   first, so the record of how it was built lives with it).
 3. Keep the Oaken surface thin: import the base and the contract types you return, nothing deeper.
 4. A new non-trivial branch, parser or protocol leaves a test.
 5. Do not import your plugin from `oaken_plugins/__init__.py`: the package imports nothing.

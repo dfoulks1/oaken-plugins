@@ -24,8 +24,10 @@ extensions directory and add it by name.
 src/oaken_plugins/<kind>_<name>/     # formatter_ini, provider_jsonl: the kind, then the name `plugin add` takes
     __init__.py                      # the plugin class, and its own documentation: a docstring (its first line is what
                                      # `oaken plugins` shows), `setup_help` and `config_example`; the console renders them
-tests/test_<kind>_<name>.py
-prompts/<kind>_<name>/               # the prompts the plugin was built from, when it has them
+    tests/                           # its own tests: `uv run pytest src/oaken_plugins/<kind>_<name>`
+    docs/decisions/index.md          # the decisions (ADRs) the plugin was made from
+    docs/prompts/index.md            # the prompts it was made from, numbered, `00-context.md` first
+tests/                               # only what spans plugins: the catalog, the shared Ollama fake
 ```
 
 A plugin subclasses one base from `oaken_core.plugins.base` (`BaseFormatter`, `BaseTriager`, `BaseProvider`...), sets a few
@@ -44,6 +46,9 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `hackernews` | triager | rates Hacker News rows: labels project and kind, drops "Who wants to be hired" comments |
 | `exec` | provider | a template: one instance per program, run on a schedule; each row it prints (a JSON array or JSON Lines) becomes an item |
 | `gmail` | provider | a template: one instance per Gmail account, synced on a schedule, each message submitted to Intake (ported from oaken-mail) |
+| `jmap` | provider | a template: one instance per JMAP account (Fastmail and others), synced on a schedule from the mailbox state it kept; the API token is in the OS keyring |
+| `maildir` | provider | a template: one instance per local Maildir (Thunderbird's maildir store too), synced on a schedule; read-only, confidential by default |
+| `mbox` | provider | a template: one instance per mbox file or folder of them (a Thunderbird profile's mail folders too), synced on a schedule from a byte offset; read-only, confidential by default |
 | `imap` | provider | a template: one instance per IMAP mailbox, synced on a schedule (pull only; the password is in the OS keyring) |
 | `smtp` | provider | a template: one instance per sending account, with `check` and `send` commands (a send is confirmed first) |
 | `ollama` | llm_backend | the system's Ollama as the model backend: it needs no model, it lists the models Ollama has |
@@ -58,15 +63,12 @@ versions it needs (`requires_core`, currently `>=1.0.0,<2`) and `tags` for what 
 reads these without importing anything: `oaken plugins --kind provider --tag mail`. Each plugin's first docstring line is its listing
 description, one fragment of 30 to 64 characters; tests keep all of that true.
 
-IMAP, SMTP and the formatter's safe mode need libraries, which come as extras: `pip install "oaken-plugins[imap,smtp,clean]"`. Without `clean`, safe mode still works but cleans only the plain-text part.
+Install one plugin's libraries with its extra, `pip install "oaken-plugins[provider.imap]"` (`[provider-imap]` works too), or everything with `[all]`. The wheel always carries every plugin: an extra picks dependencies, and a plugin does nothing until `plugin add provider.imap`. IMAP, SMTP and the formatter's safe mode are the plugins that need libraries; `[imap]`, `[smtp]` and `[clean]` still work as groups. Without `clean`, safe mode still works but cleans only the plain-text part.
 
 ## Not yet ported
 
 The write side of the Gmail and IMAP providers (flag, label, trash, move) is not ported yet. It is part of a provider's shape: a provider extends the contract with its own operations when it loads, and core needs nothing for them. oaken-mail has it.
 
-`oaken-provider-jmap`, `oaken-provider-maildir` and `oaken-provider-mbox` still speak oaken-mail's older plugin API
-(`oaken.plugins`) and sit at the top level of this repository as they were. They join `src/oaken_plugins/` once they are
-ported to Oaken Core.
 
 ## Developing
 
