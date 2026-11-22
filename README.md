@@ -51,6 +51,8 @@ attributes and writes the method or two that are its own. It declares no entry p
 | `mbox` | provider | a template: one instance per mbox file or folder of them (a Thunderbird profile's mail folders too), synced on a schedule from a byte offset; read-only, confidential by default |
 | `imap` | provider | a template: one instance per IMAP mailbox, synced on a schedule (pull only; the password is in the OS keyring) |
 | `smtp` | provider | a template: one instance per sending account, with `check` and `send` commands (a send is confirmed first) |
+| `lmstudio` | llm_backend | LM Studio's server (OpenAI-compatible) as the model backend: it needs no model, it lists LM Studio's chat models and their loaded context |
+| `lmstudio` | embedder | embeddings from LM Studio (it needs an embedding model: that is its own setting) |
 | `ollama` | llm_backend | the system's Ollama as the model backend: it needs no model, it lists the models Ollama has |
 | `ollama` | embedder | embeddings from an Ollama server (it needs a model: that is its own setting) |
 | `ollama-remote` | llm_backend | an Ollama server on another machine, with its own address |

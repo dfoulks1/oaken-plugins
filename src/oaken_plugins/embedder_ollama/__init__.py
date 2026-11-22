@@ -8,11 +8,16 @@ from collections.abc import Sequence
 from typing import Any, ClassVar
 
 import httpx2
-
 from oaken_core.errors import PluginError
-from oaken_plugins.llm_backend_ollama.client import OllamaClient, OllamaConfig, check_url, installed_models
 from oaken_core.plugins.base import BaseEmbedder
 from oaken_core.plugins.contracts import Health, PluginContext
+
+from oaken_plugins.llm_backend_ollama.client import (
+    OllamaClient,
+    OllamaConfig,
+    check_url,
+    installed_models,
+)
 
 
 class OllamaEmbedder(BaseEmbedder):

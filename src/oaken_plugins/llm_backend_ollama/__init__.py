@@ -8,12 +8,16 @@ import json
 from typing import Any, ClassVar
 
 import httpx2
-
 from oaken_core.errors import OakenError, PluginError
-from oaken_plugins.llm_backend_ollama.client import OllamaClient, OllamaConfig, check_url, installed_models
 from oaken_core.plugins.base import BaseLLMBackend
 from oaken_core.plugins.contracts import Health, LLMRequest, LLMResponse, PluginContext
 
+from oaken_plugins.llm_backend_ollama.client import (
+    OllamaClient,
+    OllamaConfig,
+    check_url,
+    installed_models,
+)
 
 DEFAULT_CONTEXT = 4096  # Ollama's default num_ctx on current releases (OLLAMA_CONTEXT_LENGTH changes it); older ones used 2048
 

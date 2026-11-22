@@ -20,6 +20,14 @@ The first release of oaken-plugins, for oaken-core 1.0.0 or later in 1.x (`requi
   `max_retries`, `backoff`) and the retrying JSON client move out of the Ollama plugin, so another server's backend (LM Studio, any
   OpenAI-compatible one) writes only its endpoints. `llm_backend_ollama.client` still exports `check_url` and `is_loopback`.
 
+- **LM Studio** (`llm_backend.lmstudio`, `embedder.lmstudio` 0.1.0, new): LM Studio's local server as a model backend and an embedder, an
+  alternative to Ollama. Generation and vectors use LM Studio's OpenAI-compatible routes (`/v1/chat/completions` with a `json_schema`
+  `response_format`, `/v1/embeddings`); the model list, each model's kind and its loaded context come from LM Studio's own
+  `/api/v1/models` (0.4+), else `/api/v0/models`, else `/v1/models`. The context reported is what LM Studio loaded the model with (4096 if
+  not loaded), not its maximum. Reasoning (`reasoning`, `reasoning_content` or a leading `<think>` block) goes to `thinking`, never the
+  answer. Like Ollama, a non-loopback `base_url` is reported as `off_machine`. For a loopback `base_url` proxy environment variables are
+  ignored, and redirects are never followed. An optional API token is read from the keyring (`api_token`), never from `config.toml`.
+  Nothing is ever loaded or downloaded.
 - **Layout and extras:** each plugin keeps its own `tests/` and `docs/decisions` and `docs/prompts` (each with an `index.md`) in its folder, and has an extra named `kind.name` (`pip install oaken-plugins[provider.imap]`; `[provider-imap]` is the same). `[all]` brings every plugin's libraries; `[imap]`, `[smtp]` and `[clean]` stay. Tests and docs are left out of the wheel.
 - **Maildir** (`provider.maildir` 0.2.0): `oaken-provider-maildir` ported from oaken-mail's older plugin API into `src/oaken_plugins/`, where
   it loads on oaken-core 1.0. A template like `imap`: one instance per Maildir, synced by a job every `poll_seconds`, with a `check` command.

@@ -11,11 +11,16 @@ loopback address) is ``oaken_plugins._modelhttp``, shared with any other model s
 from typing import Any
 
 import httpx2
-from pydantic import Field
-
 from oaken_core.errors import AIBackendError, PluginError
 from oaken_core.logging import get_logger
-from oaken_plugins._modelhttp import HTTPBackendConfig, JSONClient, check_url, is_loopback
+from pydantic import Field
+
+from oaken_plugins._modelhttp import (
+    HTTPBackendConfig,
+    JSONClient,
+    check_url,
+    is_loopback,
+)
 
 __all__ = ["DEFAULT_URL", "OllamaClient", "OllamaConfig", "check_url", "installed_models", "is_loopback"]  # check_url and is_loopback live in _modelhttp now
 

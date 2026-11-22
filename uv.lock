@@ -965,7 +965,7 @@ requires-dist = [
     { name = "oaken-plugins", extras = ["provider-smtp"], marker = "extra == 'smtp'" },
     { name = "selectolax", marker = "extra == 'formatter-rfc822'", specifier = ">=1.0.1" },
 ]
-provides-extras = ["imap", "smtp", "clean", "all", "action-exec", "embedder-ollama", "enricher-sentiment", "formatter-cve", "formatter-ini", "formatter-rfc822", "gateway-localname", "ingestor-cve", "ingestor-mail", "llm-backend-ollama", "llm-backend-ollama-remote", "provider-exec", "provider-gmail", "provider-imap", "provider-jmap", "provider-jsonl", "provider-maildir", "provider-mbox", "provider-smtp", "triager-cve", "triager-eol", "triager-filters", "triager-hackernews", "triager-kev", "triager-sieve", "triager-spamfilter"]
+provides-extras = ["imap", "smtp", "clean", "all", "action-exec", "embedder-lmstudio", "embedder-ollama", "enricher-sentiment", "formatter-cve", "formatter-ini", "formatter-rfc822", "gateway-localname", "ingestor-cve", "ingestor-mail", "llm-backend-lmstudio", "llm-backend-ollama", "llm-backend-ollama-remote", "provider-exec", "provider-gmail", "provider-imap", "provider-jmap", "provider-jsonl", "provider-maildir", "provider-mbox", "provider-smtp", "triager-cve", "triager-eol", "triager-filters", "triager-hackernews", "triager-kev", "triager-sieve", "triager-spamfilter"]
 
 [package.metadata.requires-dev]
 dev = [
