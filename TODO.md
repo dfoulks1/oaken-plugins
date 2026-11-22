@@ -50,3 +50,36 @@ wheel (about 163 KB, 24 plugins) always carries every plugin, and a plugin is us
 - [ ] A test that every plugin has an extra, and that each extra's libraries are what the plugin imports.
 - [ ] Document the extras table in oaken-core's `using-plugins.md` (the public site lives in oaken-core).
 - [ ] Decide the extra-name form, then write the decision.
+
+## Mixins: which live in core, which move here
+
+**Status:** open for discussion. Nothing is decided. Turn the rule into a MADR decision (`docs/decisions/`) before moving anything.
+
+### Where things stand
+
+- `oaken_plugins.mixins.mail.MailProvider` (read/unread write-back for a provider of mail) already lives here. Only `provider_gmail`
+  uses it. oaken-core has no copy and does not import it.
+- Core holds the mixins it calls itself: `BaseTemplatePlugin` (`oaken_core.plugins.base`) and, per core's `docs-src/PLAN.md`,
+  `BaseLLMAnalyzer` and `BaseVecAnalyzer`. Not checked in this repo: whether anything else in core is only a plugin family's helper.
+- `oaken_core.testing.contracts` has pytest-mixin suites (`EmbedderContract`, `LLMContract`...). Those are test tools for plugin
+  authors and stay in core.
+
+### The rule (proposed)
+
+A mixin stays in core when core calls it, or when a contract needs it to behave (the host checks it, the router reads it).
+It moves here when only plugins of one domain use it and core never does: mail, a vendor, a protocol.
+
+### Constraint and the path (owner's ruling)
+
+Core 1.0 froze its surface, so a mixin is never removed from core inside 1.x. Copy it here, and deprecate the core version in
+oaken-core 1.0.1 (a deprecation note and a warning, still importable). Removal waits for core 2.0. Core cannot import from here (the
+dependency runs the other way), so there is no re-export shim on core's side. Plugin authors must be able to build a plugin from
+`oaken-core` alone, so whatever a plugin needs to run stays in core; only what is optional for authoring moves.
+
+### Steps, if the rule is accepted
+
+- [ ] Inventory every mixin and helper base in core (`grep -rn "class .*Mixin\|class Base" src/oaken_core`) and sort each by the rule.
+- [ ] For each that moves: copy it to `oaken_plugins/mixins/<name>.py` with its tests under the plugin that uses it first.
+- [ ] Point the plugins at the copy, then deprecate core's class in oaken-core 1.0.1 (a change in oaken-core, not here); remove it in 2.0.
+- [ ] Decide the mixin namespace: keep `oaken_plugins.mixins.*`, or place each beside the plugin family it serves.
+- [ ] A `mixins` extra is not needed: a mixin carries no third-party library. Say so in the decision.
