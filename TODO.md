@@ -1,85 +1,59 @@
 # TODO
 
-AI-generated, unreviewed by a human. Not for 1.0: nothing here changes a frozen surface, and every item is additive.
+AI-generated, unreviewed by a human. Items are additive unless they say otherwise.
 
-## Selective install: pick a plugin, get only its libraries
+## Before the 1.0.0 upload
 
-**Status:** open for discussion. Nothing is decided. Turn the choice into a MADR decision (`docs/decisions/`) before building.
+- [ ] Date the `## 1.0.0` entry in `CHANGELOG.md`.
+- [ ] Dry run on TestPyPI: install `oaken-plugins[provider.imap]` and `oaken-plugins[all]` from it into a clean Python 3.12 venv.
+- [ ] Push `release-1.0.0`, open the PR to `main`, tag `v1.0.0` after the merge, upload with `uv build` + `twine upload`.
+- [ ] Close PRs #2, #3 and #5: their work is in `release-1.0.0`. (#6 merged into `plugin-icons`, not `main`.)
 
-### The goal
+## Done in 1.0.0 (kept here so the reasoning is findable)
 
-`pip install oaken-plugins[llm_backend.ollama]` should bring what that plugin needs, without a PyPI package per plugin.
-Example from the owner (an illustration, not a name): `oaken-plugins[provider.llm.ollama]`.
+- Selective install: one wheel, one extra per plugin (`oaken-plugins[kind.name]`, `[kind-name]` is the same), plus `[all]`. The
+  wheel always carries every plugin; an extra picks dependencies. `tests/test_extras.py` keeps the table in step with the imports.
+- Each plugin folder holds its `tests/` and `docs/{decisions,prompts}`; `tests/test_layout.py` enforces it. `tools/QA.sh` runs the
+  checks every plugin must pass. `tools/new_plugin.sh KIND NAME` starts one from `template/`.
+- `jmap`, `maildir` and `mbox` ported from oaken-mail's older API; the three top-level `oaken-provider-*` packages are gone.
 
-### The constraint
+## Selective install: what is still open
 
-A single PyPI distribution installs all of its files. An extra selects *dependencies*, never code. So the
-wheel (about 163 KB, 24 plugins) always carries every plugin, and a plugin is used only after
-`oaken plugin add KIND.NAME`. Core imports nothing until then.
-
-### Options
-
-1. **One wheel, per-plugin extras, `plugin add` to enable.** Every plugin gets an extra listing its libraries
-   (empty when it needs none). Additive, compatible with the 1.0 promise, no new packages. Recommended first step.
-2. **A few grouped distributions (3 to 5), split by dependency weight.** For example a pure-Python base plus
-   `oaken-plugins-mail` and `oaken-plugins-llm`. Extras still choose plugins inside a group. Take this step when
-   one group's libraries get heavy or conflict.
-3. **Core fetches the plugin.** `oaken plugin add` downloads one plugin from a catalog (an index of files with sha256
-   hashes, for example GitHub release assets) into `[extensions] dirs`, which core already loads from. No extra
-   PyPI packages. Costs: core downloads and runs code (hash pinning, a confirm gate, an ADR), and plugin
-   dependencies still have to be installed some way. Not for 1.x.
-4. **One distribution per plugin.** The "gazillion packages" route. Rejected.
-
-### Open questions
-
-- **Extra names.** Not chosen. The owner's example was an illustration. Decide it when the decision is written.
-- **Existing groups.** `[imap]`, `[smtp]` and `[clean]` exist today. Keep them as groups beside the per-plugin
-  extras, or replace them? Removing one is a break for the 1.x series, so keeping them is the safe default.
 - **Missing libraries.** When a plugin's libraries are absent, `oaken plugin add` could print the exact install line
-  (`pip install "oaken-plugins[...]"`). Needs core to know the extra name; a convention (`kind.name` is the extra)
-  avoids a new field.
-- **Where a split would land.** The 1.0 promise freezes `oaken_plugins.<kind>_<name>`. A later split must keep the
-  `oaken_plugins` namespace (or the catalog must redirect), so the module path does not change.
-- **When to split at all.** Likely triggers, in order: shared versioning (one fix releases everything), dependency
-  weight, a plugin with a different owner or risk profile (`action_exec`, `provider_exec`), test time. Guess: 50 to
-  100 plugins. No number is committed.
-
-### First steps, if option 1 is chosen
-
-- [ ] List each plugin's third-party imports and write its extra in `pyproject.toml` (empty list when none).
-- [ ] A test that every plugin has an extra, and that each extra's libraries are what the plugin imports.
-- [ ] Document the extras table in oaken-core's `using-plugins.md` (the public site lives in oaken-core).
-- [ ] Decide the extra-name form, then write the decision.
+  (`pip install "oaken-plugins[provider.imap]"`). The extra name is `kind.name`, so core needs no new field. A change in oaken-core.
+- **Grouped distributions.** Split into 3 to 5 distributions (a pure-Python base, `-mail`, `-llm`) when one group's libraries get
+  heavy or conflict. A split must keep the `oaken_plugins` namespace, so module paths do not change.
+- **Core fetches the plugin** (a catalog of hashed files, downloaded by `plugin add`). Not for 1.x: core would download and run code.
+- **When to split at all.** Likely triggers, in order: shared versioning (one fix releases everything), dependency weight, a plugin
+  with a different owner or risk profile (`action_exec`, `provider_exec`), test time. No number is committed.
 
 ## Mixins: which live in core, which move here
 
-**Status:** open for discussion. Nothing is decided. Turn the rule into a MADR decision (`docs/decisions/`) before moving anything.
+**Status:** open for discussion. Turn the rule into a MADR decision (`docs/decisions/`) before moving anything.
 
-### Where things stand
+Where things stand: `oaken_plugins.mixins.mail.MailProvider` (read/unread write-back) already lives here and only `provider_gmail`
+uses it. Core keeps what it calls itself: `BaseTemplatePlugin` and, per core's `docs-src/PLAN.md`, `BaseLLMAnalyzer` and
+`BaseVecAnalyzer`. `oaken_core.testing.contracts` (pytest-mixin suites) stays in core: it is a tool for plugin authors.
 
-- `oaken_plugins.mixins.mail.MailProvider` (read/unread write-back for a provider of mail) already lives here. Only `provider_gmail`
-  uses it. oaken-core has no copy and does not import it.
-- Core holds the mixins it calls itself: `BaseTemplatePlugin` (`oaken_core.plugins.base`) and, per core's `docs-src/PLAN.md`,
-  `BaseLLMAnalyzer` and `BaseVecAnalyzer`. Not checked in this repo: whether anything else in core is only a plugin family's helper.
-- `oaken_core.testing.contracts` has pytest-mixin suites (`EmbedderContract`, `LLMContract`...). Those are test tools for plugin
-  authors and stay in core.
+**The rule (proposed):** a mixin stays in core when core calls it or a contract needs it to behave (the host checks it, the
+router reads it). It moves here when only plugins of one domain use it and core never does: mail, a vendor, a protocol.
+Plugin authors must be able to build a plugin from `oaken-core` alone, so what a plugin needs to run stays in core.
 
-### The rule (proposed)
-
-A mixin stays in core when core calls it, or when a contract needs it to behave (the host checks it, the router reads it).
-It moves here when only plugins of one domain use it and core never does: mail, a vendor, a protocol.
-
-### Constraint and the path (owner's ruling)
-
-Core 1.0 froze its surface, so a mixin is never removed from core inside 1.x. Copy it here, and deprecate the core version in
-oaken-core 1.0.1 (a deprecation note and a warning, still importable). Removal waits for core 2.0. Core cannot import from here (the
-dependency runs the other way), so there is no re-export shim on core's side. Plugin authors must be able to build a plugin from
-`oaken-core` alone, so whatever a plugin needs to run stays in core; only what is optional for authoring moves.
-
-### Steps, if the rule is accepted
+**The path (owner's ruling):** core 1.0 froze its surface, so nothing is removed from core in 1.x. Copy the mixin here and
+deprecate the core version in oaken-core 1.0.1 (a note and a warning, still importable); removal waits for core 2.0. Core cannot
+import from here, so there is no re-export shim on core's side.
 
 - [ ] Inventory every mixin and helper base in core (`grep -rn "class .*Mixin\|class Base" src/oaken_core`) and sort each by the rule.
-- [ ] For each that moves: copy it to `oaken_plugins/mixins/<name>.py` with its tests under the plugin that uses it first.
-- [ ] Point the plugins at the copy, then deprecate core's class in oaken-core 1.0.1 (a change in oaken-core, not here); remove it in 2.0.
-- [ ] Decide the mixin namespace: keep `oaken_plugins.mixins.*`, or place each beside the plugin family it serves.
-- [ ] A `mixins` extra is not needed: a mixin carries no third-party library. Say so in the decision.
+- [ ] For each that moves: copy it to `oaken_plugins/mixins/<name>.py`, tests under the plugin that uses it first.
+- [ ] Point the plugins at the copy; deprecate core's class in oaken-core 1.0.1.
+- [ ] Decide the namespace: keep `oaken_plugins.mixins.*`, or place each beside the plugin family it serves.
+- [ ] No `mixins` extra: a mixin carries no third-party library. Say so in the decision.
+
+## Later
+
+- [ ] Backfill `docs/decisions` and `docs/prompts` per plugin. Most indexes say "None recorded yet."
+- [ ] Templates for the other kinds (`provider`, `formatter`, `ingestor`, `llm_backend`...). Today: `triager`, `enricher`.
+- [ ] Write-back for `imap`, `jmap`, `maildir` and `mbox` (`gmail` has read/unread via `MailProvider`; `imap` flag, label, trash and move too).
+- [ ] `jmap`: the first sync reads at most 1000 messages and `Email/changes` ignores `hasMoreChanges` and non-created ids. Page both.
+- [ ] `lmstudio`: move its HTTP onto `oaken_plugins._modelhttp`, as `ollama` did in PR #4.
+- [ ] Type checking: oaken-core ships no `py.typed`, so `mypy src` reports 263 `import-untyped` errors. Add the marker in core, or configure mypy here.

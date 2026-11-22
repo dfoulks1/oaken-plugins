@@ -27,7 +27,8 @@ src/oaken_plugins/<kind>_<name>/     # formatter_ini, provider_jsonl: the kind, 
     tests/                           # its own tests: `uv run pytest src/oaken_plugins/<kind>_<name>`
     docs/decisions/index.md          # the decisions (ADRs) the plugin was made from
     docs/prompts/index.md            # the prompts it was made from, numbered, `00-context.md` first
-tests/                               # only what spans plugins: the catalog, the shared Ollama fake
+tests/                               # only what spans plugins: the catalog, the shared Ollama and LM Studio fakes
+template/ tools/                     # tools/new_plugin.sh starts a plugin from a template; tools/QA.sh checks one (or all)
 ```
 
 A plugin subclasses one base from `oaken_core.plugins.base` (`BaseFormatter`, `BaseTriager`, `BaseProvider`...), sets a few

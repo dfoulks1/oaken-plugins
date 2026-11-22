@@ -17,7 +17,25 @@ The contract is `oaken_core.plugins`, versioned by `PLUGIN_API_VERSION`. The dis
 (`oaken-core>=X` in `pyproject.toml`), and a plugin should assert the API version it needs at load, so a contract change
 surfaces plainly rather than misbehaving.
 
-## Adding a plugin
+## Adding a plugin, the quick way
+
+You do not need an AI for any of this.
+
+```
+tools/new_plugin.sh triager semantic     # a working plugin in src/oaken_plugins/triager_semantic, plus its extra
+$EDITOR src/oaken_plugins/triager_semantic/__init__.py
+tools/QA.sh triager_semantic             # the checks every plugin must pass; run it until it says PASS
+oaken plugin add triager.semantic
+```
+
+`tools/new_plugin.sh` copies `template/<kind>_example` (kinds with a template: `triager`, `enricher`), renames it, adds
+`"triager.semantic" = []` to `[project.optional-dependencies]` in `pyproject.toml` and runs QA. If your plugin imports a
+library that oaken-core does not bring, put it in that extra (`"triager.semantic" = ["numpy>=2"]`); QA fails until the extra
+and the imports agree. `tools/QA.sh` with no argument checks every plugin. It needs [uv](https://docs.astral.sh/uv/).
+
+Users install your plugin's libraries with `pip install "oaken-plugins[triager.semantic]"` (`[triager-semantic]` is the same).
+
+## What goes in a plugin folder
 
 1. `src/oaken_plugins/<kind>_<name>/__init__.py`: a docstring (its first line is the summary `oaken plugins` shows) and
    the plugin class. Exactly one class of that kind, because `plugin add` picks it.
