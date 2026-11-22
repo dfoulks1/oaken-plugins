@@ -23,6 +23,7 @@ class Queries:
 
     messages: ModuleType
     attachments: ModuleType
+    index: ModuleType
 
 
 _cache: dict[str, Queries] = {}
@@ -39,6 +40,7 @@ def queries_for(engine: str) -> Queries:
         q = Queries(
             messages=importlib.import_module(f"{base}.messages"),
             attachments=importlib.import_module(f"{base}.attachments"),
+            index=importlib.import_module(f"{base}.index"),
         )
     except ModuleNotFoundError as exc:
         raise PluginError(
