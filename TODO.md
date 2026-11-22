@@ -32,8 +32,11 @@ wheel (about 163 KB, 24 plugins) always carries every plugin, and a plugin is us
 
 ### Open questions
 
-- **Extra names.** Match `oaken plugin add` (`llm_backend.ollama`), not a three-part path. pip normalizes extras
-  (PEP 685): `llm_backend.ollama` and `llm-backend-ollama` are the same extra. Which form do the docs show?
+- **Extra names.** The form is open: `provider.llm.ollama`, `llm_backend.ollama`, `llm_backend_ollama` and a bare
+  `ollama` all work. pip normalizes extras (PEP 685), so `llm_backend.ollama` and `llm-backend-ollama` are the same
+  extra. A bare name is ambiguous (`llm_backend.ollama`, `llm_backend.ollama_remote` and `embedder.ollama` all exist).
+  Lean, not decided: one extra per plugin named after its module (`llm_backend_ollama`, one name everywhere), plus
+  short bundle extras named for a product or purpose (`ollama`, `mail`), like `[imap]` and `[smtp]` today.
 - **Existing groups.** `[imap]`, `[smtp]` and `[clean]` exist today. Keep them as groups beside the per-plugin
   extras, or replace them? Removing one is a break for the 1.x series, so keeping them is the safe default.
 - **Missing libraries.** When a plugin's libraries are absent, `oaken plugin add` could print the exact install line
