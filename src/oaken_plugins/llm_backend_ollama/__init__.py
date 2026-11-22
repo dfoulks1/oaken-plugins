@@ -25,6 +25,7 @@ class OllamaLLM(BaseLLMBackend):
     it lists the models it has, so a settings dialog can offer them in a dropdown. The model is the instance's ``model`` setting.
     Who may send it what is the router's call, from the instance's ``locality`` (unset means hosted, the strictest)."""
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for
+    icon: ClassVar[str] = "bi-cpu"  # a local model
     version: ClassVar[str] = "0.2.0"  # 0.2.0: num_ctx, a context window Ollama really keeps, no environment proxy for a loopback address
 
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
