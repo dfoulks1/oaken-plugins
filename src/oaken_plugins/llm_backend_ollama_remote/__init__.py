@@ -13,9 +13,7 @@ class OllamaRemoteLLM(OllamaLLM):
     whole point, so it stays off until its ``base_url`` is set."""
 
     tags: ClassVar[tuple[str, ...]] = ("model",)  # what it is for; written here because the catalog reads source and does not follow a base class
-
-    icon: ClassVar[str] = "bi-cloud"  # a model on another machine
-    version: ClassVar[str] = "0.1.0"
+    version: ClassVar[str] = "0.2.0"  # 0.2.0: follows llm_backend.ollama 0.2.0 (num_ctx; the shared HTTP client)
     api_version = 1  # the plugin API this was written against (core's PLUGIN_API_VERSION)
     requires_core = ">=1.0.0,<2"  # the oaken-core versions it works with
     requires_config = ("base_url",)

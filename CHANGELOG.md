@@ -4,6 +4,22 @@
 
 The first release of oaken-plugins, for oaken-core 1.0.0 or later in 1.x (`requires_core = ">=1.0.0,<2"`). Each plugin carries its own version.
 
+- **Ollama** (`llm_backend.ollama`, `llm_backend.ollama-remote`, `embedder.ollama` 0.1.1): each says, once started, whether its `base_url` is
+  another machine (`off_machine`). With oaken-core's router check, an instance typed `locality = "local"` that points at another box is treated as
+  hosted, so a confidential item cannot reach it by a typo. Loopback means `localhost`, `127.0.0.0/8` and `::1`; any other host name counts
+  as another machine.
+- **Ollama never goes through an environment proxy to this machine** (`llm_backend.ollama` 0.2.0, `llm_backend.ollama-remote` 0.2.0,
+  `embedder.ollama` 0.1.2). The HTTP client trusted `HTTP_PROXY` / `ALL_PROXY`, so with a proxy set and no `NO_PROXY`, a loopback
+  `base_url` (reported `off_machine = false`) sent prompts and texts to the proxy host. A loopback address is now always reached directly;
+  a remote one still honours the environment.
+- **Ollama's context window is the one Ollama keeps** (`llm_backend.ollama` 0.2.0). The backend reported the model's full length (from
+  `/api/show`) while Ollama loads a model with its default context (4096 tokens) and silently drops the start of a longer prompt. It now
+  reports 4096, or the new optional `num_ctx` setting, which is sent with every call (one value, so the model is not reloaded between
+  calls) and is capped at the default model's length.
+- **Shared model-server HTTP** (`oaken_plugins._modelhttp`, not a plugin): the loopback check, the base settings (`base_url`, `timeout`,
+  `max_retries`, `backoff`) and the retrying JSON client move out of the Ollama plugin, so another server's backend (LM Studio, any
+  OpenAI-compatible one) writes only its endpoints. `llm_backend_ollama.client` still exports `check_url` and `is_loopback`.
+
 - **Layout and extras:** each plugin keeps its own `tests/` and `docs/decisions` and `docs/prompts` (each with an `index.md`) in its folder, and has an extra named `kind.name` (`pip install oaken-plugins[provider.imap]`; `[provider-imap]` is the same). `[all]` brings every plugin's libraries; `[imap]`, `[smtp]` and `[clean]` stay. Tests and docs are left out of the wheel.
 - **Maildir** (`provider.maildir` 0.2.0): `oaken-provider-maildir` ported from oaken-mail's older plugin API into `src/oaken_plugins/`, where
   it loads on oaken-core 1.0. A template like `imap`: one instance per Maildir, synced by a job every `poll_seconds`, with a `check` command.

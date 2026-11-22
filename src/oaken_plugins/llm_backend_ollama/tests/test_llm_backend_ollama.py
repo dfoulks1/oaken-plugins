@@ -295,3 +295,29 @@ async def test_the_models_ollama_has_pulled_are_offered_as_choices_for_model(
         and found["model"] == sorted(found["model"])
     )
     assert ollama.paths() == ["/api/tags"]  # it only lists; it never pulls
+
+
+async def test_with_no_num_ctx_the_window_is_what_ollama_keeps_by_default_not_the_models_full_length(ollama: FakeOllama) -> None:
+    # show_llm.json says 32768, but Ollama loads it with its default context and drops the rest of a longer prompt
+    llm = await started_llm(ollama)
+    assert llm.context_window == 4096
+    await llm.generate(LLMRequest(system="s", user=["hello"]))
+    assert "num_ctx" not in ollama.bodies("/api/chat")[-1]["options"]  # unset: Ollama's own default, and no reload
+
+
+async def test_num_ctx_is_sent_with_every_call_and_is_the_window_the_router_gets(ollama: FakeOllama) -> None:
+    llm = await started_llm(ollama, {"num_ctx": 16384})
+    assert llm.context_window == 16384
+    await llm.generate(LLMRequest(system="s", user=["hello"]))
+    await llm.generate(LLMRequest(system="s", user=["again"]), model="other:7b")
+    assert [b["options"]["num_ctx"] for b in ollama.bodies("/api/chat")] == [16384, 16384]  # one value, so Ollama never reloads between calls
+
+
+async def test_num_ctx_never_reports_more_than_the_default_model_holds(ollama: FakeOllama) -> None:
+    assert (await started_llm(ollama, {"num_ctx": 65536})).context_window == 32768
+
+
+async def test_num_ctx_too_small_is_a_settings_error(ollama: FakeOllama) -> None:
+    with pytest.raises(PluginError, match="num_ctx"):
+        await started_llm(ollama, {"num_ctx": 16})
+
